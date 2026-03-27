@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.production.local
+
+# Logs
+*.log
+*.err.log
+*.out.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Prisma
+prisma/migrations/**/migration_lock.toml
+
+# Cloudflare tunnel
+cloudflared-*.log
+tunnel.*.log
+
+# Debug
+.next-dev-debug.log

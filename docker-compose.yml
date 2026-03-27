@@ -1,0 +1,81 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mcuser
+      POSTGRES_PASSWORD: mcpass
+      POSTGRES_DB: meu_concierge
+    ports:
+      - '5433:5432'
+    volumes:
+      - mc_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mcuser -d meu_concierge']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mc_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - '6380:6379'
+    volumes:
+      - mc_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: mc_minio
+    restart: unless-stopped
+    command: server /data --console-address ':9002'
+    environment:
+      MINIO_ROOT_USER: mcminio
+      MINIO_ROOT_PASSWORD: mcminiopass
+    ports:
+      - '9010:9000'
+      - '9011:9002'
+    volumes:
+      - mc_minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  minio_init:
+    image: minio/mc:latest
+    container_name: mc_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 mcminio mcminiopass;
+      mc mb --ignore-existing myminio/meu-concierge;
+      mc anonymous set download myminio/meu-concierge;
+      exit 0;
+      "
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mc_mailhog
+    restart: unless-stopped
+    ports:
+      - '1026:1025'
+      - '8026:8025'
+
+volumes:
+  mc_postgres_data:
+  mc_redis_data:
+  mc_minio_data:
