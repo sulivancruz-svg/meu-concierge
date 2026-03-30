@@ -100,14 +100,14 @@ export default async function TripsPage({
     <div className="space-y-6">
       <PageHeader
         eyebrow="Operacao"
-        title="Viagens"
-        description="Gerencie jornadas com status, codigo interno, passageiros vinculados e prioridade futura para WhatsApp."
+        title="Jornadas Globais"
+        description="Visao transversal das jornadas da agencia com status, passageiros vinculados e prioridade operacional."
         actions={(
           <Link
             href="/dashboard/trips/new"
             className="rounded-2xl bg-[#1f6b46] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#173a27]"
           >
-            Nova viagem
+            Nova jornada
           </Link>
         )}
       />

@@ -7,6 +7,7 @@ import { buildPassengerPortalEntryUrl } from '@/lib/portal-access';
 import { PageHeader } from '@/components/ui/page-header';
 import { DeleteResourceButton } from '@/components/ui/delete-resource-button';
 import { PassengerHub, type PassengerHubData, type TripEntityOption } from '@/components/passengers/passenger-hub';
+import { serializeTripDocuments } from '@/modules/documents/document-presentation';
 
 function getCompanionNotes(metadata: unknown): string | null {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
@@ -33,6 +34,7 @@ export default async function PassengerDetailPage({
           trip: {
             include: {
               _count: { select: { documents: { where: { deletedAt: null } } } },
+              passengers: { include: { passenger: true } },
               tripItems: {
                 orderBy: [{ startAt: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
               },
@@ -42,6 +44,14 @@ export default async function PassengerDetailPage({
               tourBookings: true,
               trainBookings: true,
               insurancePolicies: true,
+              notes: {
+                orderBy: { createdAt: 'desc' },
+                include: { author: { select: { name: true } } },
+              },
+              documents: {
+                where: { deletedAt: null },
+                orderBy: { createdAt: 'desc' },
+              },
             },
           },
         },
@@ -62,6 +72,15 @@ export default async function PassengerDetailPage({
         passengerId: passenger.id,
       })
     : null;
+
+  const personalDocumentCount = await prisma.document.count({
+    where: {
+      agencyId: session.user.agencyId,
+      passengerId: passenger.id,
+      tripId: null,
+      deletedAt: null,
+    },
+  });
 
   // Build entity options per trip for document upload forms
   function buildEntityOptions(trip: NonNullable<typeof passenger>['tripPassengers'][number]['trip']): TripEntityOption[] {
@@ -105,24 +124,10 @@ export default async function PassengerDetailPage({
     return options;
   }
 
-  const hubData: PassengerHubData = {
-    id: passenger.id,
-    name: passenger.name,
-    phone: passenger.phone,
-    email: passenger.email,
-    passportNumber: passenger.passportNumber,
-    dateOfBirth: passenger.dateOfBirth?.toISOString() ?? null,
-    notes: passenger.notes,
-    portalStatus: passenger.portalStatus,
-    portalLink: primaryTripLink,
-    companions: passenger.companions.map((c) => ({
-      id: c.id,
-      name: c.name,
-      relationship: c.relationship,
-      dateOfBirth: c.dateOfBirth?.toISOString() ?? null,
-      notes: getCompanionNotes(c.structuredMetadata),
-    })),
-    trips: passenger.tripPassengers.map((tp) => ({
+  const trips = await Promise.all(passenger.tripPassengers.map(async (tp) => {
+    const tripDocuments = await serializeTripDocuments(tp.trip.documents);
+
+    return {
       tripPassengerId: tp.id,
       tripId: tp.tripId,
       isLead: tp.isLead,
@@ -133,7 +138,77 @@ export default async function PassengerDetailPage({
       endDate: tp.trip.endDate.toISOString(),
       documentCount: tp.trip._count.documents,
       entityOptions: buildEntityOptions(tp.trip),
+      passengerOptions: tp.trip.passengers
+        .filter((tripPassenger) => tripPassenger.passengerId && tripPassenger.passenger)
+        .map((tripPassenger) => ({
+          value: tripPassenger.passengerId as string,
+          label: tripPassenger.passenger?.name ?? tripPassenger.name,
+        })),
+      documents: tripDocuments.map((document) => ({
+        ...document,
+        passengerName: tp.trip.passengers.find((tripPassenger) => tripPassenger.passengerId === document.passengerId)?.passenger?.name ?? null,
+        fileUrl: document.downloadUrl,
+        uploadedBy: null,
+      })),
+      flights: tp.trip.flightSegments.map((item) => ({
+        ...item,
+        departureAt: item.departureAt.toISOString(),
+        arrivalAt: item.arrivalAt.toISOString(),
+        actualDepartureAt: item.actualDepartureAt?.toISOString() ?? null,
+        actualArrivalAt: item.actualArrivalAt?.toISOString() ?? null,
+        lastCheckedAt: item.lastCheckedAt?.toISOString() ?? null,
+      })),
+      hotels: tp.trip.hotelBookings.map((item) => ({
+        ...item,
+        checkIn: item.checkIn.toISOString(),
+        checkOut: item.checkOut.toISOString(),
+      })),
+      transports: tp.trip.transportBookings.map((item) => ({
+        ...item,
+        scheduledAt: item.scheduledAt.toISOString(),
+        rentalReturnAt: item.rentalReturnAt?.toISOString() ?? null,
+      })),
+      tours: tp.trip.tourBookings.map((item) => ({
+        ...item,
+        scheduledAt: item.scheduledAt.toISOString(),
+      })),
+      trains: tp.trip.trainBookings.map((item) => ({
+        ...item,
+        departureAt: item.departureAt.toISOString(),
+        arrivalAt: item.arrivalAt.toISOString(),
+      })),
+      insurances: tp.trip.insurancePolicies.map((item) => ({
+        ...item,
+        startDate: item.startDate.toISOString(),
+        endDate: item.endDate.toISOString(),
+      })),
+      notes: tp.trip.notes.map((item) => ({
+        ...item,
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
+      })),
+    };
+  }));
+
+  const hubData: PassengerHubData = {
+    id: passenger.id,
+    name: passenger.name,
+    phone: passenger.phone,
+    email: passenger.email,
+    passportNumber: passenger.passportNumber,
+    dateOfBirth: passenger.dateOfBirth?.toISOString() ?? null,
+    notes: passenger.notes,
+    portalStatus: passenger.portalStatus,
+    portalLink: primaryTripLink,
+    personalDocumentCount,
+    companions: passenger.companions.map((c) => ({
+      id: c.id,
+      name: c.name,
+      relationship: c.relationship,
+      dateOfBirth: c.dateOfBirth?.toISOString() ?? null,
+      notes: getCompanionNotes(c.structuredMetadata),
     })),
+    trips,
     conversations: passenger.conversations.map((c) => ({
       id: c.id,
       phone: c.phone,

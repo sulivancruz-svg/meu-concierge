@@ -27,6 +27,8 @@ import {
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast-provider';
 import { DOCUMENT_CATEGORY_OPTIONS } from '@/modules/documents/document-meta';
+import { TripDocumentsManager } from '@/components/trips/trip-documents-manager';
+import { TripOperationsManager } from '@/components/trips/trip-operations-manager';
 import { TRIP_STATUS_OPTIONS } from '@/modules/trips/trip-meta';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -54,6 +56,15 @@ export type TripData = {
   endDate: string;
   documentCount: number;
   entityOptions: TripEntityOption[];
+  passengerOptions: Array<{ value: string; label: string }>;
+  documents: DocumentItem[];
+  flights: Array<Record<string, unknown>>;
+  hotels: Array<Record<string, unknown>>;
+  transports: Array<Record<string, unknown>>;
+  tours: Array<Record<string, unknown>>;
+  trains: Array<Record<string, unknown>>;
+  insurances: Array<Record<string, unknown>>;
+  notes: Array<Record<string, unknown>>;
 };
 
 export type ConversationData = {
@@ -68,6 +79,7 @@ export type DocumentItem = {
   id: string;
   passengerId: string | null;
   passengerName: string | null;
+  isEssential?: boolean;
   category: string;
   categoryLabel: string;
   title: string;
@@ -76,12 +88,16 @@ export type DocumentItem = {
   previewUrl: string | null;
   downloadUrl: string | null;
   mimeType: string;
+  extractedText?: string | null;
+  structuredMetadata?: Record<string, unknown> | null;
   linkedEntityType: string | null;
   linkedEntityId: string | null;
   linkedEntityLabel: string | null;
   processingStatus: string;
   fileSizeBytes: number;
+  description?: string | null;
   createdAt: string;
+  uploadedBy?: string | null;
 };
 
 export type PassengerHubData = {
@@ -94,6 +110,7 @@ export type PassengerHubData = {
   notes: string | null;
   portalStatus: string;
   portalLink: string | null;
+  personalDocumentCount: number;
   companions: CompanionData[];
   trips: TripData[];
   conversations: ConversationData[];
@@ -116,8 +133,8 @@ const DOC_CATEGORIES = [
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'dados',       label: 'Dados pessoais' },
-  { key: 'viagens',     label: 'Viagens'        },
-  { key: 'documentos',  label: 'Documentos'     },
+  { key: 'viagens',     label: 'Jornadas'       },
+  { key: 'documentos',  label: 'Docs pessoais'  },
   { key: 'conversas',   label: 'Conversas'      },
 ];
 
@@ -693,20 +710,41 @@ function DadosTab({ p }: { p: PassengerHubData }) {
 
 function ViagensTab({ p }: { p: PassengerHubData }) {
   const { success: toastSuccess, error: toastError } = useToast();
+  const [persistedTripStatuses, setPersistedTripStatuses] = useState<Record<string, string>>(
+    () => Object.fromEntries(p.trips.map((trip) => [trip.tripId, trip.status])),
+  );
   const [tripStatuses, setTripStatuses] = useState<Record<string, string>>(
     () => Object.fromEntries(p.trips.map((trip) => [trip.tripId, trip.status])),
   );
   const [savingTripId, setSavingTripId] = useState<string | null>(null);
+  const [openTripIds, setOpenTripIds] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(p.trips.map((trip, index) => [trip.tripId, index === 0])),
+  );
 
   useEffect(() => {
+    setPersistedTripStatuses(Object.fromEntries(p.trips.map((trip) => [trip.tripId, trip.status])));
     setTripStatuses(Object.fromEntries(p.trips.map((trip) => [trip.tripId, trip.status])));
+  }, [p.trips]);
+
+  useEffect(() => {
+    setOpenTripIds((current) => {
+      const next = { ...current };
+      for (const trip of p.trips) {
+        if (!(trip.tripId in next)) {
+          next[trip.tripId] = false;
+        }
+      }
+      return next;
+    });
   }, [p.trips]);
 
   async function handleStatusSave(tripId: string) {
     const nextStatus = tripStatuses[tripId];
     const currentTrip = p.trips.find((trip) => trip.tripId === tripId);
 
-    if (!currentTrip || !nextStatus || nextStatus === currentTrip.status) {
+    const persistedStatus = persistedTripStatuses[tripId] ?? currentTrip?.status;
+
+    if (!currentTrip || !nextStatus || nextStatus === persistedStatus) {
       return;
     }
 
@@ -720,26 +758,30 @@ function ViagensTab({ p }: { p: PassengerHubData }) {
 
       if (!response.ok) {
         toastError('Nao foi possivel atualizar o status da viagem.');
-        setTripStatuses((current) => ({ ...current, [tripId]: currentTrip.status }));
+        setTripStatuses((current) => ({ ...current, [tripId]: persistedStatus ?? currentTrip.status }));
         return;
       }
 
-      currentTrip.status = nextStatus;
+      setPersistedTripStatuses((current) => ({ ...current, [tripId]: nextStatus }));
       toastSuccess('Status da viagem atualizado.');
     } catch {
       toastError('Erro de conexao ao atualizar o status da viagem.');
-      setTripStatuses((current) => ({ ...current, [tripId]: currentTrip.status }));
+      setTripStatuses((current) => ({ ...current, [tripId]: persistedStatus ?? currentTrip.status }));
     } finally {
       setSavingTripId(null);
     }
   }
 
+  function toggleTrip(tripId: string) {
+    setOpenTripIds((current) => ({ ...current, [tripId]: !current[tripId] }));
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[#7b857b]">{p.trips.length} viagem{p.trips.length !== 1 ? 's' : ''} vinculada{p.trips.length !== 1 ? 's' : ''}</p>
+        <p className="text-sm text-[#7b857b]">{p.trips.length} jornada{p.trips.length !== 1 ? 's' : ''} vinculada{p.trips.length !== 1 ? 's' : ''}</p>
         <Link href={`/dashboard/trips/new?passengerId=${p.id}`} className="inline-flex items-center gap-2 rounded-xl bg-[#1f6b46] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#173a27]">
-          <Plus className="h-4 w-4" /> Nova viagem
+          <Plus className="h-4 w-4" /> Nova jornada
         </Link>
       </div>
 
@@ -749,14 +791,16 @@ function ViagensTab({ p }: { p: PassengerHubData }) {
           <p className="font-semibold text-[#38463a]">Nenhuma viagem ainda</p>
           <p className="mt-1 text-sm text-[#7b857b]">Crie a primeira jornada para este passageiro</p>
           <Link href={`/dashboard/trips/new?passengerId=${p.id}`} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#1f6b46] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#173a27]">
-            <Plus className="h-4 w-4" /> Criar viagem
+            <Plus className="h-4 w-4" /> Criar jornada
           </Link>
         </div>
       ) : p.trips.map(trip => {
         const selectedStatus = tripStatuses[trip.tripId] ?? trip.status;
+        const persistedStatus = persistedTripStatuses[trip.tripId] ?? trip.status;
         const cfg = tripStatusConfig(selectedStatus);
-        const statusChanged = selectedStatus !== trip.status;
+        const statusChanged = selectedStatus !== persistedStatus;
         const isSaving = savingTripId === trip.tripId;
+        const isOpen = openTripIds[trip.tripId] ?? false;
         return (
           <div key={trip.tripPassengerId} className="rounded-[20px] border border-[#d9e2d5] bg-white p-5 transition hover:border-[#c6d7c4]">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -806,15 +850,48 @@ function ViagensTab({ p }: { p: PassengerHubData }) {
                   </button>
                 </div>
                 <div className="flex gap-2">
-                <Link href={`/dashboard/trips/${trip.tripId}/documents`} className="inline-flex items-center gap-1.5 rounded-xl border border-[#d9e2d5] bg-white px-3 py-2 text-xs font-semibold text-[#142018] transition hover:bg-[#f6f7f2]">
-                  <FileText className="h-3.5 w-3.5" /> Documentos
-                </Link>
-                <Link href={`/dashboard/trips/${trip.tripId}`} className="inline-flex items-center gap-1.5 rounded-xl bg-[#ecf6ea] px-3 py-2 text-xs font-semibold text-[#1f6b46] transition hover:bg-[#ddf0e3]">
-                  Abrir <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleTrip(trip.tripId)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[#d9e2d5] bg-white px-3 py-2 text-xs font-semibold text-[#142018] transition hover:bg-[#f6f7f2]"
+                  >
+                    {isOpen ? 'Recolher jornada' : 'Abrir jornada'}
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  <Link href={`/dashboard/trips/${trip.tripId}`} className="inline-flex items-center gap-1.5 rounded-xl bg-[#ecf6ea] px-3 py-2 text-xs font-semibold text-[#1f6b46] transition hover:bg-[#ddf0e3]">
+                    Tela completa <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
               </div>
             </div>
+            {isOpen && (
+              <div className="mt-5 space-y-6 border-t border-[#edf1ea] pt-5">
+                <TripOperationsManager
+                  tripId={trip.tripId}
+                  passengers={trip.passengerOptions.map((option) => ({ id: option.value, name: option.label }))}
+                  flights={trip.flights}
+                  hotels={trip.hotels}
+                  transports={trip.transports}
+                  tours={trip.tours}
+                  trains={trip.trains}
+                  insurances={trip.insurances}
+                  notes={trip.notes}
+                />
+
+                <TripDocumentsManager
+                  tripId={trip.tripId}
+                  initialDocuments={trip.documents.map((document) => ({
+                    ...document,
+                    extractedText: document.extractedText ?? null,
+                    structuredMetadata: document.structuredMetadata ?? null,
+                    description: document.description ?? null,
+                    uploadedBy: document.uploadedBy ?? null,
+                  }))}
+                  passengerOptions={trip.passengerOptions}
+                  entityOptions={trip.entityOptions.map((option) => ({ value: option.id, label: option.label, type: option.type }))}
+                />
+              </div>
+            )}
           </div>
         );
       })}
@@ -826,20 +903,9 @@ function DocumentosTab({ p }: { p: PassengerHubData }) {
   return (
     <div className="space-y-4">
       <PersonalDocsSection passengerId={p.id} passengerName={p.name} />
-      {p.trips.length > 0 && (
-        <>
-          <div className="flex items-center gap-3 py-1">
-            <div className="h-px flex-1 bg-[#e8ece5]" />
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#7b857b]">Por viagem</p>
-            <div className="h-px flex-1 bg-[#e8ece5]" />
-          </div>
-          <div className="space-y-3">
-            {p.trips.map(trip => (
-              <TripDocsAccordion key={trip.tripPassengerId} trip={trip} passengerId={p.id} passengerName={p.name} />
-            ))}
-          </div>
-        </>
-      )}
+      <div className="rounded-[20px] border border-[#d9e2d5] bg-white p-5 text-sm text-[#5b665d]">
+        Os documentos operacionais da viagem agora ficam dentro da aba de jornadas, junto com o restante da operação.
+      </div>
     </div>
   );
 }
@@ -878,10 +944,11 @@ function ConversasTab({ p }: { p: PassengerHubData }) {
 // ─── Main Export ───────────────────────────────────────────────────────────────
 
 export function PassengerHub({ passenger: p }: { passenger: PassengerHubData }) {
-  const [tab, setTab] = useState<Tab>('dados');
+  const [tab, setTab] = useState<Tab>('viagens');
 
   const tabCounts: Partial<Record<Tab, number>> = {
     viagens:    p.trips.length,
+    documentos: p.personalDocumentCount,
     conversas:  p.conversations.length,
   };
 
@@ -890,9 +957,9 @@ export function PassengerHub({ passenger: p }: { passenger: PassengerHubData }) 
       {/* Stats strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {([
-          { key: 'viagens' as Tab,    icon: PlaneTakeoff,      label: 'Viagens',    value: p.trips.length,         bg: 'bg-[#ecf6ea]', ico: 'text-[#1f6b46]' },
+          { key: 'viagens' as Tab,    icon: PlaneTakeoff,      label: 'Jornadas',   value: p.trips.length,         bg: 'bg-[#ecf6ea]', ico: 'text-[#1f6b46]' },
           { key: 'dados' as Tab,      icon: Users,             label: 'Companions', value: p.companions.length,    bg: 'bg-[#fff4de]', ico: 'text-[#8a5a00]' },
-          { key: 'documentos' as Tab, icon: FileText,          label: 'Documentos', value: p.trips.reduce((s,t) => s + t.documentCount, 0), bg: 'bg-[#e8f2ff]', ico: 'text-[#17406d]' },
+          { key: 'documentos' as Tab, icon: FileText,          label: 'Docs pessoais', value: p.personalDocumentCount, bg: 'bg-[#e8f2ff]', ico: 'text-[#17406d]' },
           { key: 'conversas' as Tab,  icon: MessageSquareText, label: 'Conversas',  value: p.conversations.length, bg: 'bg-[#fdecea]', ico: 'text-[#7f2315]' },
         ] as const).map(({ key, icon: Icon, label, value, bg, ico }) => (
           <button key={key} type="button" onClick={() => setTab(key)} className={`group rounded-[20px] border bg-white p-4 text-left transition hover:shadow-md ${tab === key ? 'border-[#1f6b46] shadow-sm' : 'border-[#d9e2d5]'}`}>

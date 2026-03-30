@@ -34,17 +34,17 @@ export default async function DocumentsPage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Hub"
-        title="Documentos"
-        description="Central de vouchers, apolices, bilhetes e comprovantes da jornada, com base pronta para storage e processamento inteligente."
+        title="Biblioteca Documental"
+        description="Base global de vouchers, apolices, bilhetes e comprovantes da agencia, com foco em auditoria e processamento."
         actions={(
           <Link href="/dashboard/trips" className="rounded-2xl border border-[#d9e2d5] bg-white px-4 py-3 text-sm font-semibold text-[#142018]">
-            Vincular a uma viagem
+            Abrir jornadas globais
           </Link>
         )}
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Documentos recentes" value={totalDocuments} detail="Ultimos registros carregados" icon={FileText} />
+        <StatCard title="Documentos na base" value={totalDocuments} detail="Ultimos registros carregados" icon={FileText} />
         <StatCard title="Em processamento" value={processing} detail="OCR, parsing e estruturacao" icon={FileClock} tone="warn" />
         <StatCard title="Disponiveis" value={ready} detail="Prontos para operacao e portal" icon={FileSearch} tone="accent" />
         <StatCard title="Essenciais" value={essentials} detail="Itens criticos da jornada" icon={UploadCloud} />

@@ -123,38 +123,38 @@ export default async function DashboardPage() {
       <PageHeader
         eyebrow="Cockpit"
         title="Operacao da agencia"
-        description="Cockpit operacional com viagens proximas, atendimentos recentes, documentos, alertas e pendencias reais da jornada."
+        description="Cockpit operacional com jornadas proximas, passageiros ativos, atendimento recente e pendencias reais da agencia."
         actions={(
           <>
             <Link
-              href="/dashboard/trips/new"
+              href="/dashboard/passengers/new"
               className="rounded-2xl bg-[#1f6b46] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#173a27]"
             >
-              Nova viagem
+              Novo passageiro
             </Link>
             <Link
-              href="/dashboard/passengers/new"
+              href="/dashboard/trips/new"
               className="rounded-2xl border border-[#d9e2d5] bg-white px-4 py-3 text-sm font-semibold text-[#142018] transition hover:border-[#c3d1c1]"
             >
-              Novo passageiro
+              Nova jornada
             </Link>
           </>
         )}
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard title="Viagens proximas" value={tripsUpcoming} detail="Jornadas prontas para embarcar" icon={PlaneTakeoff} tone={tripsUpcoming > 0 ? 'warn' : 'default'} />
-        <StatCard title="Viagens em andamento" value={tripsInProgress} detail="Operacao em curso" icon={PlaneTakeoff} tone="accent" />
+        <StatCard title="Jornadas proximas" value={tripsUpcoming} detail="Jornadas prontas para embarcar" icon={PlaneTakeoff} tone={tripsUpcoming > 0 ? 'warn' : 'default'} />
+        <StatCard title="Jornadas em andamento" value={tripsInProgress} detail="Operacao em curso" icon={PlaneTakeoff} tone="accent" />
         <StatCard title="Passageiros ativos" value={activePassengers} detail="Com viagem pronta ou em curso" icon={UsersRound} />
         <StatCard title="Alertas recentes" value={unresolvedAlerts} detail="Eventos sem resolucao" icon={Bell} tone={unresolvedAlerts > 0 ? 'danger' : 'default'} />
-        <StatCard title="Documentos recentes" value={totalDocuments} detail="Base documental da agencia" icon={Files} />
+        <StatCard title="Docs na base" value={totalDocuments} detail="Biblioteca documental da agencia" icon={Files} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <SectionCard
-          title="Viagens em foco"
+          title="Jornadas em foco"
           description="Proximas partidas e jornadas em andamento que pedem leitura operacional."
-          action={<Link href="/dashboard/trips" className="text-sm font-semibold text-[#1f6b46]">Ver viagens</Link>}
+          action={<Link href="/dashboard/trips" className="text-sm font-semibold text-[#1f6b46]">Ver visao global</Link>}
         >
           <div className="space-y-3">
             {spotlightTrips.length === 0 ? (

@@ -22,28 +22,28 @@ export const adminNavigation: AdminNavItem[] = [
   {
     href: '/dashboard',
     label: 'Dashboard',
-    description: 'Visao operacional da agencia',
+    description: 'Resumo operacional e pendencias da agencia',
     icon: LayoutDashboard,
     group: 'operacao',
   },
   {
     href: '/dashboard/passengers',
     label: 'Passageiros',
-    description: 'Cadastro e historico de passageiros',
+    description: 'Hub principal com cadastro, jornadas e atendimento',
     icon: UsersRound,
     group: 'operacao',
   },
   {
     href: '/dashboard/trips',
-    label: 'Viagens',
-    description: 'Jornadas, itinerarios e status',
+    label: 'Jornadas Globais',
+    description: 'Visao transversal das jornadas da agencia',
     icon: PlaneTakeoff,
     group: 'operacao',
   },
   {
     href: '/dashboard/documents',
-    label: 'Documentos',
-    description: 'Arquivos, vouchers e processamento',
+    label: 'Biblioteca Documental',
+    description: 'Auditoria, processamento e base global de arquivos',
     icon: Files,
     group: 'operacao',
   },
@@ -82,4 +82,3 @@ export function getAdminNavItem(pathname: string): AdminNavItem | undefined {
     pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
   );
 }
-

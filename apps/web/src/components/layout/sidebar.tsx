@@ -12,7 +12,7 @@ interface SidebarProps {
 export default function Sidebar({ isPlatformOwner = false }: SidebarProps) {
   const pathname = usePathname();
   const groups = [
-    { key: 'operacao', label: 'Operacao' },
+    { key: 'operacao', label: 'Hub Principal' },
     { key: 'atendimento', label: 'Experiencia' },
     { key: 'plataforma', label: 'Plataforma' },
   ] as const;
