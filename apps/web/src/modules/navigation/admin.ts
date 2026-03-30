@@ -1,10 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
-  Files,
   LayoutDashboard,
   MessageSquareText,
-  PlaneTakeoff,
   Settings2,
   ShieldCheck,
   UsersRound,
@@ -29,22 +27,8 @@ export const adminNavigation: AdminNavItem[] = [
   {
     href: '/dashboard/passengers',
     label: 'Passageiros',
-    description: 'Cadastro e historico de passageiros',
+    description: 'Cadastro, viagens e documentos',
     icon: UsersRound,
-    group: 'operacao',
-  },
-  {
-    href: '/dashboard/trips',
-    label: 'Viagens',
-    description: 'Jornadas, itinerarios e status',
-    icon: PlaneTakeoff,
-    group: 'operacao',
-  },
-  {
-    href: '/dashboard/documents',
-    label: 'Documentos',
-    description: 'Arquivos, vouchers e processamento',
-    icon: Files,
     group: 'operacao',
   },
   {
@@ -77,9 +61,20 @@ export const adminNavigation: AdminNavItem[] = [
   },
 ];
 
+// Paths that are sub-resources of Passageiros (trips and documents are managed
+// from within the passenger view, not as top-level menu items)
+const PASSENGER_SUB_PATHS = ['/dashboard/trips', '/dashboard/documents'];
+
 export function getAdminNavItem(pathname: string): AdminNavItem | undefined {
-  return adminNavigation.find((item) =>
+  const direct = adminNavigation.find((item) =>
     pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
   );
+  if (direct) return direct;
+
+  if (PASSENGER_SUB_PATHS.some((p) => pathname.startsWith(p))) {
+    return adminNavigation.find((item) => item.href === '/dashboard/passengers');
+  }
+
+  return undefined;
 }
 
