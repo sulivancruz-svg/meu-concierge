@@ -38,3 +38,5 @@ tunnel.*.log
 
 # Debug
 .next-dev-debug.log
+
+.vercel
