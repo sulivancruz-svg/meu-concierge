@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "pnpm install",
-  "buildCommand": "cd apps/web && npx prisma generate && npx next build",
+  "buildCommand": "cd apps/web && pnpm install && npx prisma generate && npx next build",
   "outputDirectory": "apps/web/.next"
 }
