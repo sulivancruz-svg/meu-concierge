@@ -17,7 +17,7 @@ export default async function DashboardPage() {
 
   const agencyId = session.user.agencyId;
   const now = new Date();
-  await syncOperationalAlertsForAgency(agencyId);
+  try { await syncOperationalAlertsForAgency(agencyId); } catch { /* non-critical */ }
 
   const [
     tripsUpcoming,
