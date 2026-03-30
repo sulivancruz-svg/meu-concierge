@@ -1,5 +1,6 @@
 {
   "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "cd apps/web && npx prisma generate && npx next build",
-  "outputDirectory": "apps/web/.next"
+  "buildCommand": "npx prisma generate && npx next build",
+  "outputDirectory": ".next",
+  "rootDirectory": "apps/web"
 }
