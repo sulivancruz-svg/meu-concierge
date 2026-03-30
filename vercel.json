@@ -1,5 +1,8 @@
 {
-  "installCommand": "npm install",
-  "buildCommand": "npx prisma generate && npx next build",
-  "outputDirectory": "apps/web/.next"
+  "installCommand": "npm ci --prefer-offline --no-audit",
+  "buildCommand": "cd apps/web && npx prisma generate && npx next build",
+  "outputDirectory": "apps/web/.next",
+  "env": {
+    "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+  }
 }
