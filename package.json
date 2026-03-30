@@ -1,0 +1,14 @@
+{
+  "name": "meu-concierge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Travel concierge platform",
+  "scripts": {
+    "build": "cd apps/web && npm install && npx prisma generate && npx next build",
+    "start": "cd apps/web && npx next start",
+    "dev": "cd apps/web && npm run dev"
+  },
+  "workspaces": [
+    "apps/web"
+  ]
+}
