@@ -5,7 +5,11 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { adminNavigation } from '@/modules/navigation/admin';
 
-export default function Sidebar() {
+interface SidebarProps {
+  isPlatformOwner?: boolean;
+}
+
+export default function Sidebar({ isPlatformOwner = false }: SidebarProps) {
   const pathname = usePathname();
   const groups = [
     { key: 'operacao', label: 'Operacao' },
@@ -70,13 +74,15 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-white/10 px-6 py-5">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">Stack atual</p>
-          <p className="mt-2 text-sm font-medium text-white">Next.js, Prisma, NextAuth</p>
-          <p className="mt-1 text-xs leading-5 text-white/50">Pronto para conectar Supabase em auth, storage e realtime.</p>
+      {isPlatformOwner && (
+        <div className="border-t border-white/10 px-6 py-5">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">Stack atual</p>
+            <p className="mt-2 text-sm font-medium text-white">Next.js, Prisma, Supabase</p>
+            <p className="mt-1 text-xs leading-5 text-white/50">Auth, storage e realtime via Supabase.</p>
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 }

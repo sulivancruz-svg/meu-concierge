@@ -11,7 +11,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <ToastProvider>
       <div className="flex min-h-screen bg-transparent">
-        <Sidebar />
+        <Sidebar isPlatformOwner={session.user.isPlatformOwner} />
         <div className="flex min-w-0 flex-1 flex-col">
           <Header user={session.user} />
           <main className="flex-1 overflow-y-auto px-6 py-6">

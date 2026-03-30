@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { generateConciergeMockReply } from '@/lib/ai/concierge';
 import { sendWhatsAppText, type WhatsAppSendResult } from '@/lib/whatsapp/send';
+import { autoSendSuggestedDocumentForConversation } from '@/modules/conversations/document-send';
 import { getConversationDetail, resolveConversationTripId } from '@/modules/conversations/service';
 
 const MessageSchema = z.object({
@@ -59,9 +60,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
       let assistantText = 'Nao encontrei uma viagem ativa para responder com seguranca.';
       let payload: Prisma.InputJsonValue | undefined;
+      let reply: Awaited<ReturnType<typeof generateConciergeMockReply>> | null = null;
 
       if (resolvedTripId) {
-        const reply = await generateConciergeMockReply({
+        reply = await generateConciergeMockReply({
           message: body.body.trim(),
           tripId: resolvedTripId,
           passengerId: conversation.passengerId,
@@ -96,6 +98,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         },
       });
       createdIds.push(assistant.id);
+
+      if (resolvedTripId && reply?.shouldAutoSendSuggestedDocument && reply.suggestedDocuments.length) {
+        const autoDocumentResult = await autoSendSuggestedDocumentForConversation({
+          agencyId: session.user.agencyId,
+          conversationId: conversation.id,
+          phone: conversation.phone,
+          tripId: resolvedTripId,
+          passengerId: conversation.passengerId,
+          suggestedDocuments: reply.suggestedDocuments,
+          captionPrefix: 'Documento solicitado pelo passageiro',
+        });
+
+        if (autoDocumentResult.messageRecordId) {
+          createdIds.push(autoDocumentResult.messageRecordId);
+        }
+      }
     } else {
       // Modo agent ou assistant: enviar via WhatsApp
       const waResult = await trySendWhatsApp(conversation.phone, body.body.trim());

@@ -27,6 +27,7 @@ import {
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast-provider';
 import { DOCUMENT_CATEGORY_OPTIONS } from '@/modules/documents/document-meta';
+import { TRIP_STATUS_OPTIONS } from '@/modules/trips/trip-meta';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -130,7 +131,7 @@ function formatBytes(bytes: number) {
 
 function tripStatusConfig(status: string) {
   const configs: Record<string, { label: string; dot: string; text: string }> = {
-    DRAFT:       { label: 'Rascunho',      dot: 'bg-[#c8b89a]',  text: 'text-[#7a5c34]' },
+    DRAFT:       { label: 'Pre-viagem',    dot: 'bg-[#c8b89a]',  text: 'text-[#7a5c34]' },
     READY:       { label: 'Pronta',        dot: 'bg-[#60b0f0]',  text: 'text-[#1a5a8a]' },
     IN_PROGRESS: { label: 'Em andamento',  dot: 'bg-[#4caf7d]',  text: 'text-[#1a6040]' },
     COMPLETED:   { label: 'Concluída',     dot: 'bg-[#aaa]',     text: 'text-[#555]'    },
@@ -691,6 +692,48 @@ function DadosTab({ p }: { p: PassengerHubData }) {
 }
 
 function ViagensTab({ p }: { p: PassengerHubData }) {
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [tripStatuses, setTripStatuses] = useState<Record<string, string>>(
+    () => Object.fromEntries(p.trips.map((trip) => [trip.tripId, trip.status])),
+  );
+  const [savingTripId, setSavingTripId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTripStatuses(Object.fromEntries(p.trips.map((trip) => [trip.tripId, trip.status])));
+  }, [p.trips]);
+
+  async function handleStatusSave(tripId: string) {
+    const nextStatus = tripStatuses[tripId];
+    const currentTrip = p.trips.find((trip) => trip.tripId === tripId);
+
+    if (!currentTrip || !nextStatus || nextStatus === currentTrip.status) {
+      return;
+    }
+
+    setSavingTripId(tripId);
+    try {
+      const response = await fetch(`/api/admin/trips/${tripId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+
+      if (!response.ok) {
+        toastError('Nao foi possivel atualizar o status da viagem.');
+        setTripStatuses((current) => ({ ...current, [tripId]: currentTrip.status }));
+        return;
+      }
+
+      currentTrip.status = nextStatus;
+      toastSuccess('Status da viagem atualizado.');
+    } catch {
+      toastError('Erro de conexao ao atualizar o status da viagem.');
+      setTripStatuses((current) => ({ ...current, [tripId]: currentTrip.status }));
+    } finally {
+      setSavingTripId(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -710,7 +753,10 @@ function ViagensTab({ p }: { p: PassengerHubData }) {
           </Link>
         </div>
       ) : p.trips.map(trip => {
-        const cfg = tripStatusConfig(trip.status);
+        const selectedStatus = tripStatuses[trip.tripId] ?? trip.status;
+        const cfg = tripStatusConfig(selectedStatus);
+        const statusChanged = selectedStatus !== trip.status;
+        const isSaving = savingTripId === trip.tripId;
         return (
           <div key={trip.tripPassengerId} className="rounded-[20px] border border-[#d9e2d5] bg-white p-5 transition hover:border-[#c6d7c4]">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -732,13 +778,41 @@ function ViagensTab({ p }: { p: PassengerHubData }) {
                 </div>
                 <p className="text-xs text-[#7b857b]">{trip.documentCount} doc{trip.documentCount !== 1 ? 's' : ''} · {trip.entityOptions.length} item{trip.entityOptions.length !== 1 ? 'ns' : ''} operacional{trip.entityOptions.length !== 1 ? 'is' : ''}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="space-y-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#7b857b]">Status da viagem</span>
+                    <select
+                      value={selectedStatus}
+                      onChange={(event) => setTripStatuses((current) => ({ ...current, [trip.tripId]: event.target.value }))}
+                      disabled={isSaving}
+                      className="min-w-[180px] rounded-xl border border-[#d9e2d5] bg-white px-3 py-2 text-sm text-[#142018] outline-none focus:border-[#1f6b46] focus:ring-2 focus:ring-[#1f6b46]/10 disabled:opacity-60"
+                    >
+                      {TRIP_STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleStatusSave(trip.tripId)}
+                    disabled={!statusChanged || isSaving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#1f6b46] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#173a27] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                    {isSaving ? 'Salvando...' : 'Atualizar status'}
+                  </button>
+                </div>
+                <div className="flex gap-2">
                 <Link href={`/dashboard/trips/${trip.tripId}/documents`} className="inline-flex items-center gap-1.5 rounded-xl border border-[#d9e2d5] bg-white px-3 py-2 text-xs font-semibold text-[#142018] transition hover:bg-[#f6f7f2]">
                   <FileText className="h-3.5 w-3.5" /> Documentos
                 </Link>
                 <Link href={`/dashboard/trips/${trip.tripId}`} className="inline-flex items-center gap-1.5 rounded-xl bg-[#ecf6ea] px-3 py-2 text-xs font-semibold text-[#1f6b46] transition hover:bg-[#ddf0e3]">
                   Abrir <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
+              </div>
               </div>
             </div>
           </div>

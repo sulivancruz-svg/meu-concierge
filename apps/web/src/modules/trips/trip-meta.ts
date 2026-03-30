@@ -14,7 +14,7 @@ export function isTripActiveForWhatsApp(input: {
 }
 
 export const TRIP_STATUS_OPTIONS: Array<{ value: TripStatus; label: string }> = [
-  { value: 'DRAFT', label: 'Rascunho' },
+  { value: 'DRAFT', label: 'Pre-viagem' },
   { value: 'READY', label: 'Pronta' },
   { value: 'IN_PROGRESS', label: 'Em andamento' },
   { value: 'COMPLETED', label: 'Concluida' },

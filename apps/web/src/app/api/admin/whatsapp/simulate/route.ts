@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { generateConciergeMockReply } from '@/lib/ai/concierge';
 import { sendWhatsAppText } from '@/lib/whatsapp/send';
+import { autoSendSuggestedDocumentForConversation } from '@/modules/conversations/document-send';
 import {
   findOrCreateWhatsAppConversation,
   normalizeWhatsAppPhone,
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
       ? {
           text: 'Nao consegui localizar seu numero no sistema. Entre em contato com a agencia.',
           suggestedDocuments: [],
+          shouldAutoSendSuggestedDocument: false,
           source: 'none' as const,
         }
       : tripId
@@ -59,6 +61,7 @@ export async function POST(req: NextRequest) {
         : {
             text: `Oi, ${passenger.name.split(' ')[0]}. Nao encontrei uma viagem ativa no seu cadastro.`,
             suggestedDocuments: [],
+            shouldAutoSendSuggestedDocument: false,
             source: 'none' as const,
           };
 
@@ -85,6 +88,18 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const autoDocumentResult = reply.shouldAutoSendSuggestedDocument && reply.suggestedDocuments.length
+      ? await autoSendSuggestedDocumentForConversation({
+          agencyId: session.user.agencyId,
+          conversationId: conversation.id,
+          phone: conversation.phone,
+          tripId: tripId ?? conversation.tripId,
+          passengerId: passenger?.id ?? conversation.passengerId,
+          suggestedDocuments: reply.suggestedDocuments,
+          captionPrefix: 'Documento solicitado pelo passageiro',
+        })
+      : null;
+
     await prisma.conversation.update({
       where: { id: conversation.id },
       data: {
@@ -106,6 +121,7 @@ export async function POST(req: NextRequest) {
         : null,
       source: reply.source,
       suggestedDocuments: reply.suggestedDocuments,
+      autoSentDocument: autoDocumentResult,
       waStatus: waResult.ok ? 'SENT' : 'FAILED',
       waMessageId: waResult.messageId,
     });

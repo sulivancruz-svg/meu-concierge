@@ -13,6 +13,7 @@ type SuggestedDocument = {
 type ConciergeReply = {
   text: string;
   suggestedDocuments: SuggestedDocument[];
+  shouldAutoSendSuggestedDocument: boolean;
   source: 'structured' | 'documents' | 'none';
 };
 
@@ -136,8 +137,33 @@ function noInfoReply(passengerName: string | null): ConciergeReply {
   return {
     text: greet(passengerName, 'nao encontrei essa informacao cadastrada na sua viagem ativa.'),
     suggestedDocuments: [],
+    shouldAutoSendSuggestedDocument: false,
     source: 'none',
   };
+}
+
+function isDocumentSendIntent(normalized: string) {
+  return includesAny(normalized, [
+    'me envie',
+    'me envia',
+    'me manda',
+    'manda',
+    'manda o',
+    'manda a',
+    'envie',
+    'envia',
+    'enviar',
+    'arquivo',
+    'documento',
+    'pdf',
+    'voucher',
+    'cartao de embarque',
+    'boarding pass',
+    'passagem',
+    'ticket',
+    'bilhete',
+    'reserva',
+  ]);
 }
 
 async function buildConciergeContext(tripId: string, passengerId?: string | null): Promise<ConciergeContext | null> {
@@ -287,6 +313,7 @@ function withDocumentSuggestion(
     return {
       text: greet(passengerName, text),
       suggestedDocuments: [],
+      shouldAutoSendSuggestedDocument: false,
       source,
     };
   }
@@ -294,6 +321,7 @@ function withDocumentSuggestion(
   return {
     text: greet(passengerName, `${text} Posso enviar o documento relacionado se voce quiser.`),
     suggestedDocuments: documents,
+    shouldAutoSendSuggestedDocument: false,
     source,
   };
 }
@@ -310,6 +338,7 @@ export async function generateConciergeMockReply(input: {
     return {
       text: 'Nao encontrei essa viagem no sistema.',
       suggestedDocuments: [],
+      shouldAutoSendSuggestedDocument: false,
       source: 'none',
     };
   }
@@ -323,7 +352,7 @@ export async function generateConciergeMockReply(input: {
   const insuranceItems = pickItemsByType(context.trip.tripItems, 'INSURANCE');
   const nextItem = pickUpcomingItem(context.trip.tripItems);
 
-  if (includesAny(normalized, ['voucher', 'documento', 'arquivo', 'me envie', 'me manda', 'manda'])) {
+  if (isDocumentSendIntent(normalized)) {
     const focusType = includesAny(normalized, KEYWORDS_BY_TYPE.FLIGHT)
       ? 'FLIGHT'
       : includesAny(normalized, KEYWORDS_BY_TYPE.HOTEL)
@@ -343,21 +372,24 @@ export async function generateConciergeMockReply(input: {
       return {
         text: greet(context.passengerName, 'nao encontrei documento relacionado a esse pedido.'),
         suggestedDocuments: [],
+        shouldAutoSendSuggestedDocument: false,
         source: 'none',
       };
     }
 
     if (documents.length === 1) {
       return {
-        text: greet(context.passengerName, `encontrei o documento ${documents[0].title}. Posso enviar esse arquivo agora.`),
+        text: greet(context.passengerName, `encontrei o documento ${documents[0].title} e vou enviar esse arquivo agora.`),
         suggestedDocuments: documents,
+        shouldAutoSendSuggestedDocument: true,
         source: 'documents',
       };
     }
 
     return {
-      text: greet(context.passengerName, `encontrei ${documents.length} documentos relacionados. Posso enviar o mais adequado agora.`),
+      text: greet(context.passengerName, `encontrei ${documents.length} documentos relacionados e vou enviar o arquivo mais adequado agora.`),
       suggestedDocuments: documents,
+      shouldAutoSendSuggestedDocument: true,
       source: 'documents',
     };
   }
@@ -379,6 +411,7 @@ export async function generateConciergeMockReply(input: {
     return {
       text: greet(context.passengerName, `o localizador de ${focused.title} e ${focused.confirmationCode}.`),
       suggestedDocuments: findRelevantDocuments(context, normalized, { itemType: focused.type, itemId: focused.id }),
+      shouldAutoSendSuggestedDocument: false,
       source: 'structured',
     };
   }
@@ -447,6 +480,7 @@ export async function generateConciergeMockReply(input: {
       return {
         text: greet(context.passengerName, `nao encontrei passeio cadastrado para ${formatDateOnly(tomorrow)}.`),
         suggestedDocuments: [],
+        shouldAutoSendSuggestedDocument: false,
         source: 'none',
       };
     }
@@ -530,6 +564,7 @@ export async function generateConciergeMockReply(input: {
         `encontrei sua viagem ativa ${context.trip.title}${context.trip.destination ? ` para ${context.trip.destination}` : ''}, mas ela ainda nao tem itens cadastrados.`,
       ),
       suggestedDocuments: [],
+      shouldAutoSendSuggestedDocument: false,
       source: 'none',
     };
   }
@@ -551,7 +586,12 @@ async function generateConciergeAIReply(input: {
 
   const context = await buildConciergeContext(input.tripId, input.passengerId);
   if (!context) {
-    return { text: 'Nao encontrei essa viagem no sistema.', suggestedDocuments: [], source: 'none' };
+    return {
+      text: 'Nao encontrei essa viagem no sistema.',
+      suggestedDocuments: [],
+      shouldAutoSendSuggestedDocument: false,
+      source: 'none',
+    };
   }
 
   const itemsSummary = sortTripItems(context.trip.tripItems)
@@ -599,7 +639,12 @@ ${docsSummary || '(nenhum documento)'}`;
 
   const documents = findRelevantDocuments(context, input.message);
 
-  return { text, suggestedDocuments: documents, source: documents.length ? 'documents' : 'structured' };
+  return {
+    text,
+    suggestedDocuments: documents,
+    shouldAutoSendSuggestedDocument: isDocumentSendIntent(normalizeText(input.message)) && documents.length > 0,
+    source: documents.length ? 'documents' : 'structured',
+  };
 }
 
 export async function generateConciergeReply(input: {

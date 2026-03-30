@@ -70,22 +70,30 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Plataforma"
+        eyebrow={isPlatformContext ? 'Plataforma' : 'Agencia'}
         title="Configuracoes"
-        description="Camada de plataforma do Concierge do Passageiro com Postgres no Supabase, auth administrativo, storage isolado e trilha pronta para portal do passageiro."
+        description={
+          isPlatformContext
+            ? 'Camada de plataforma do Concierge do Passageiro com Postgres no Supabase, auth administrativo, storage isolado e trilha pronta para portal do passageiro.'
+            : 'Gerencie os dados da sua agencia, equipe e preferencias da conta.'
+        }
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard title="Agencia" value={agency?.name ?? 'Sem agencia'} detail={agency?.plan ?? 'Plano indefinido'} icon={Store} />
         <StatCard title="Usuario atual" value={session.user.role} detail={session.user.email} icon={ShieldCheck} />
-        <StatCard
-          title="WhatsApp"
-          value={whatsappPlatformReady ? 'Pronto' : whatsappReady ? 'Parcial' : 'Pendente'}
-          detail="Webhook e Cloud API"
-          icon={MessageSquareText}
-          tone={whatsappPlatformReady ? 'accent' : 'warn'}
-        />
-        <StatCard title="Supabase" value={supabase.configured ? 'Pronto' : 'Preparacao'} detail={supabase.storageBucket} icon={Rocket} tone={supabase.configured ? 'accent' : 'warn'} />
+        {isPlatformContext && (
+          <StatCard
+            title="WhatsApp"
+            value={whatsappPlatformReady ? 'Pronto' : whatsappReady ? 'Parcial' : 'Pendente'}
+            detail="Webhook e Cloud API"
+            icon={MessageSquareText}
+            tone={whatsappPlatformReady ? 'accent' : 'warn'}
+          />
+        )}
+        {isPlatformContext && (
+          <StatCard title="Supabase" value={supabase.configured ? 'Pronto' : 'Preparacao'} detail={supabase.storageBucket} icon={Rocket} tone={supabase.configured ? 'accent' : 'warn'} />
+        )}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">

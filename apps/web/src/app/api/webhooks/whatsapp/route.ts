@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { generateConciergeMockReply } from '@/lib/ai/concierge';
 import { markAsRead, sendWhatsAppText } from '@/lib/whatsapp/send';
+import { autoSendSuggestedDocumentForConversation } from '@/modules/conversations/document-send';
 import {
   findOrCreateWhatsAppConversation,
   parseWhatsAppTextMessages,
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
         ? {
             text: 'Nao consegui localizar seu numero no sistema. Por favor, fale com a agencia.',
             suggestedDocuments: [],
+            shouldAutoSendSuggestedDocument: false,
             source: 'none' as const,
           }
         : tripId
@@ -92,6 +94,7 @@ export async function POST(req: NextRequest) {
           : {
               text: `Oi, ${passenger.name.split(' ')[0]}. Nao encontrei uma viagem ativa no seu cadastro no momento.`,
               suggestedDocuments: [],
+              shouldAutoSendSuggestedDocument: false,
               source: 'none' as const,
             };
 
@@ -118,6 +121,18 @@ export async function POST(req: NextRequest) {
           },
         },
       });
+
+      if (reply.shouldAutoSendSuggestedDocument && reply.suggestedDocuments.length) {
+        await autoSendSuggestedDocumentForConversation({
+          agencyId,
+          conversationId: conversation.id,
+          phone: conversation.phone,
+          tripId: tripId ?? conversation.tripId,
+          passengerId: passenger?.id ?? conversation.passengerId,
+          suggestedDocuments: reply.suggestedDocuments,
+          captionPrefix: 'Documento solicitado pelo passageiro',
+        });
+      }
 
       await prisma.conversation.update({
         where: { id: conversation.id },
