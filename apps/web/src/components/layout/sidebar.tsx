@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { adminNavigation } from '@/modules/navigation/admin';
+import { adminNavigation, getAdminNavItem } from '@/modules/navigation/admin';
 
 interface SidebarProps {
   isPlatformOwner?: boolean;
@@ -16,6 +16,8 @@ export default function Sidebar({ isPlatformOwner = false }: SidebarProps) {
     { key: 'atendimento', label: 'Experiencia' },
     { key: 'plataforma', label: 'Plataforma' },
   ] as const;
+
+  const activeItem = getAdminNavItem(pathname);
 
   return (
     <aside className="hidden w-[312px] shrink-0 flex-col border-r border-[#d9e2d5] bg-[#173a27] text-white lg:flex">
@@ -41,7 +43,7 @@ export default function Sidebar({ isPlatformOwner = false }: SidebarProps) {
               {adminNavigation
                 .filter((item) => item.group === group.key)
                 .map((item) => {
-                  const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                  const active = activeItem?.href === item.href;
                   const Icon = item.icon;
                   return (
                     <Link
