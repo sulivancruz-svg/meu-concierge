@@ -25,7 +25,7 @@ export default function LoginPage() {
 
     setLoading(false);
     if (res.ok) {
-      router.push('/dashboard');
+      window.location.href = '/dashboard';
     } else {
       const payload = await res.json().catch(() => null);
       setError(payload?.error || 'E-mail ou senha incorretos.');
