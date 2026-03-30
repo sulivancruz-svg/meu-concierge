@@ -8,6 +8,8 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SectionCard } from '@/components/ui/section-card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { DeleteResourceButton } from '@/components/ui/delete-resource-button';
+import { DatabaseUnavailableNotice } from '@/components/ui/database-unavailable-notice';
+import { isPrismaConnectionError } from '@/lib/prisma-error';
 
 function portalTone(status: string) {
   if (status === 'ACTIVE') return 'success' as const;
@@ -45,37 +47,56 @@ export default async function PassengersPage({
       : {}),
   };
 
-  const [passengers, total] = await Promise.all([
-    prisma.passenger.findMany({
-      where,
-      orderBy: { name: 'asc' },
-      skip: (page - 1) * limit,
-      take: limit,
-      include: {
-        _count: {
-          select: {
-            tripPassengers: true,
-            companions: true,
-            conversations: true,
-          },
-        },
-        tripPassengers: {
-          include: {
-            trip: {
-              select: {
-                title: true,
-                status: true,
-                startDate: true,
-              },
+  let passengers;
+  let total;
+  try {
+    [passengers, total] = await Promise.all([
+      prisma.passenger.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          _count: {
+            select: {
+              tripPassengers: true,
+              companions: true,
+              conversations: true,
             },
           },
-          orderBy: { trip: { startDate: 'desc' } },
-          take: 1,
+          tripPassengers: {
+            include: {
+              trip: {
+                select: {
+                  title: true,
+                  status: true,
+                  startDate: true,
+                },
+              },
+            },
+            orderBy: { trip: { startDate: 'desc' } },
+            take: 1,
+          },
         },
-      },
-    }),
-    prisma.passenger.count({ where }),
-  ]);
+      }),
+      prisma.passenger.count({ where }),
+    ]);
+  } catch (error) {
+    if (!isPrismaConnectionError(error)) {
+      throw error;
+    }
+
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Passageiros"
+          title="Base de passageiros"
+          description="Busque por nome, WhatsApp ou e-mail e entre rapido no contexto operacional de cada passageiro."
+        />
+        <DatabaseUnavailableNotice context="A lista de passageiros nao foi carregada porque a conexao com o banco falhou." />
+      </div>
+    );
+  }
 
   const passengerListQuery = new URLSearchParams();
   if (q) passengerListQuery.set('q', q);

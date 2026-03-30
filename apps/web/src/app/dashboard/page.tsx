@@ -9,6 +9,8 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SectionCard } from '@/components/ui/section-card';
 import { StatCard } from '@/components/ui/stat-card';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { DatabaseUnavailableNotice } from '@/components/ui/database-unavailable-notice';
+import { isPrismaConnectionError } from '@/lib/prisma-error';
 import { listAgencyAlerts, syncOperationalAlertsForAgency } from '@/modules/alerts/service';
 
 export default async function DashboardPage() {
@@ -18,6 +20,104 @@ export default async function DashboardPage() {
   const agencyId = session.user.agencyId;
   const now = new Date();
   try { await syncOperationalAlertsForAgency(agencyId); } catch { /* non-critical */ }
+
+  let dashboardData;
+  try {
+    dashboardData = await Promise.all([
+      prisma.trip.count({
+        where: {
+          agencyId,
+          status: 'READY',
+          startDate: { gte: now },
+        },
+      }),
+      prisma.trip.count({ where: { agencyId, status: 'IN_PROGRESS' } }),
+      prisma.document.count({ where: { agencyId, deletedAt: null } }),
+      prisma.alert.count({ where: { agencyId, resolvedAt: null } }),
+      prisma.tripPassenger.count({
+        where: {
+          passengerId: { not: null },
+          trip: {
+            agencyId,
+            status: { in: ['READY', 'IN_PROGRESS'] },
+            endDate: { gte: now },
+          },
+        },
+      }),
+      prisma.trip.findMany({
+        where: {
+          agencyId,
+          status: { in: ['READY', 'IN_PROGRESS'] },
+          endDate: { gte: now },
+        },
+        orderBy: [
+          { status: 'desc' },
+          { startDate: 'asc' },
+        ],
+        take: 6,
+        include: {
+          passengers: {
+            take: 3,
+            include: { passenger: { select: { name: true } } },
+          },
+          _count: { select: { documents: true, alerts: true } },
+        },
+      }),
+      prisma.conversation.findMany({
+        where: { agencyId },
+        orderBy: { lastMessageAt: 'desc' },
+        take: 6,
+        include: {
+          passenger: { select: { name: true } },
+          trip: { select: { title: true } },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+      }),
+      prisma.document.findMany({
+        where: { agencyId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+        include: {
+          trip: { select: { id: true, title: true } },
+          passenger: { select: { name: true } },
+        },
+      }),
+      listAgencyAlerts(agencyId, { take: 6 }),
+      prisma.conversation.count({
+        where: {
+          agencyId,
+          status: 'OPEN',
+          messages: {
+            some: {
+              direction: 'INBOUND',
+            },
+          },
+        },
+      }),
+      prisma.trip.count({
+        where: {
+          agencyId,
+          status: { in: ['READY', 'IN_PROGRESS'] },
+          documents: { none: { deletedAt: null } },
+        },
+      }),
+    ]);
+  } catch (error) {
+    if (!isPrismaConnectionError(error)) {
+      throw error;
+    }
+
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Cockpit"
+          title="Operacao da agencia"
+          description="Cockpit operacional com jornadas proximas, passageiros ativos, atendimento recente e pendencias reais da agencia."
+        />
+        <DatabaseUnavailableNotice context="O cockpit foi aberto, mas a leitura do banco falhou. Revise a conexao do Prisma/Supabase e tente novamente." />
+      </div>
+    );
+  }
 
   const [
     tripsUpcoming,
@@ -31,85 +131,7 @@ export default async function DashboardPage() {
     recentAlerts,
     inboundWaiting,
     documentlessTrips,
-  ] = await Promise.all([
-    prisma.trip.count({
-      where: {
-        agencyId,
-        status: 'READY',
-        startDate: { gte: now },
-      },
-    }),
-    prisma.trip.count({ where: { agencyId, status: 'IN_PROGRESS' } }),
-    prisma.document.count({ where: { agencyId, deletedAt: null } }),
-    prisma.alert.count({ where: { agencyId, resolvedAt: null } }),
-    prisma.tripPassenger.count({
-      where: {
-        passengerId: { not: null },
-        trip: {
-          agencyId,
-          status: { in: ['READY', 'IN_PROGRESS'] },
-          endDate: { gte: now },
-        },
-      },
-    }),
-    prisma.trip.findMany({
-      where: {
-        agencyId,
-        status: { in: ['READY', 'IN_PROGRESS'] },
-        endDate: { gte: now },
-      },
-      orderBy: [
-        { status: 'desc' },
-        { startDate: 'asc' },
-      ],
-      take: 6,
-      include: {
-        passengers: {
-          take: 3,
-          include: { passenger: { select: { name: true } } },
-        },
-        _count: { select: { documents: true, alerts: true } },
-      },
-    }),
-    prisma.conversation.findMany({
-      where: { agencyId },
-      orderBy: { lastMessageAt: 'desc' },
-      take: 6,
-      include: {
-        passenger: { select: { name: true } },
-        trip: { select: { title: true } },
-        messages: { orderBy: { createdAt: 'desc' }, take: 1 },
-      },
-    }),
-    prisma.document.findMany({
-      where: { agencyId, deletedAt: null },
-      orderBy: { createdAt: 'desc' },
-      take: 6,
-      include: {
-        trip: { select: { id: true, title: true } },
-        passenger: { select: { name: true } },
-      },
-    }),
-    listAgencyAlerts(agencyId, { take: 6 }),
-    prisma.conversation.count({
-      where: {
-        agencyId,
-        status: 'OPEN',
-        messages: {
-          some: {
-            direction: 'INBOUND',
-          },
-        },
-      },
-    }),
-    prisma.trip.count({
-      where: {
-        agencyId,
-        status: { in: ['READY', 'IN_PROGRESS'] },
-        documents: { none: { deletedAt: null } },
-      },
-    }),
-  ]);
+  ] = dashboardData;
 
   const pendingOperationalItems = [
     { label: 'Alertas sem resolucao', value: unresolvedAlerts, tone: unresolvedAlerts > 0 ? 'danger' : 'neutral' },

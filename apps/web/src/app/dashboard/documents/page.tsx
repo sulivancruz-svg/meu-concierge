@@ -4,31 +4,55 @@ import { ptBR } from 'date-fns/locale';
 import { FileClock, FileSearch, FileText, UploadCloud } from 'lucide-react';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { DatabaseUnavailableNotice } from '@/components/ui/database-unavailable-notice';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionCard } from '@/components/ui/section-card';
 import { StatCard } from '@/components/ui/stat-card';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { isPrismaConnectionError } from '@/lib/prisma-error';
 
 export default async function DocumentsPage() {
   const session = await getSession();
   if (!session) return null;
 
   const agencyId = session.user.agencyId;
-  const [documents, totalDocuments, processing, ready, essentials] = await Promise.all([
-    prisma.document.findMany({
-      where: { agencyId, deletedAt: null },
-      orderBy: { createdAt: 'desc' },
-      take: 16,
-      include: {
-        trip: { select: { id: true, title: true } },
-        uploadedBy: { select: { name: true } },
-      },
-    }),
-    prisma.document.count({ where: { agencyId, deletedAt: null } }),
-    prisma.document.count({ where: { agencyId, deletedAt: null, processingStatus: 'PROCESSING' } }),
-    prisma.document.count({ where: { agencyId, deletedAt: null, processingStatus: 'DONE' } }),
-    prisma.document.count({ where: { agencyId, deletedAt: null, isEssential: true } }),
-  ]);
+  let documents;
+  let totalDocuments;
+  let processing;
+  let ready;
+  let essentials;
+  try {
+    [documents, totalDocuments, processing, ready, essentials] = await Promise.all([
+      prisma.document.findMany({
+        where: { agencyId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 16,
+        include: {
+          trip: { select: { id: true, title: true } },
+          uploadedBy: { select: { name: true } },
+        },
+      }),
+      prisma.document.count({ where: { agencyId, deletedAt: null } }),
+      prisma.document.count({ where: { agencyId, deletedAt: null, processingStatus: 'PROCESSING' } }),
+      prisma.document.count({ where: { agencyId, deletedAt: null, processingStatus: 'DONE' } }),
+      prisma.document.count({ where: { agencyId, deletedAt: null, isEssential: true } }),
+    ]);
+  } catch (error) {
+    if (!isPrismaConnectionError(error)) {
+      throw error;
+    }
+
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Hub"
+          title="Biblioteca Documental"
+          description="Base global de vouchers, apolices, bilhetes e comprovantes da agencia, com foco em auditoria e processamento."
+        />
+        <DatabaseUnavailableNotice context="A biblioteca documental nao foi carregada porque a conexao com o banco falhou." />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

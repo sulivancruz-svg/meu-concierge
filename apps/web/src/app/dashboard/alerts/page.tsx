@@ -2,9 +2,11 @@ import { AlertTriangle, Siren, TimerReset, Waves } from 'lucide-react';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { AlertsFeed } from '@/components/alerts/alerts-feed';
+import { DatabaseUnavailableNotice } from '@/components/ui/database-unavailable-notice';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionCard } from '@/components/ui/section-card';
 import { StatCard } from '@/components/ui/stat-card';
+import { isPrismaConnectionError } from '@/lib/prisma-error';
 import { listAgencyAlerts, syncOperationalAlertsForAgency } from '@/modules/alerts/service';
 
 export default async function AlertsPage() {
@@ -12,15 +14,43 @@ export default async function AlertsPage() {
   if (!session) return null;
 
   const agencyId = session.user.agencyId;
-  await syncOperationalAlertsForAgency(agencyId);
+  try {
+    await syncOperationalAlertsForAgency(agencyId);
+  } catch (error) {
+    if (!isPrismaConnectionError(error)) {
+      throw error;
+    }
+  }
 
-  const [alerts, critical, warning, unresolved, totalRecent] = await Promise.all([
-    listAgencyAlerts(agencyId, { includeResolved: true, take: 30 }),
-    prisma.alert.count({ where: { agencyId, severity: 'CRITICAL', resolvedAt: null } }),
-    prisma.alert.count({ where: { agencyId, severity: 'WARNING', resolvedAt: null } }),
-    prisma.alert.count({ where: { agencyId, resolvedAt: null } }),
-    prisma.alert.count({ where: { agencyId } }),
-  ]);
+  let alerts;
+  let critical;
+  let warning;
+  let unresolved;
+  let totalRecent;
+  try {
+    [alerts, critical, warning, unresolved, totalRecent] = await Promise.all([
+      listAgencyAlerts(agencyId, { includeResolved: true, take: 30 }),
+      prisma.alert.count({ where: { agencyId, severity: 'CRITICAL', resolvedAt: null } }),
+      prisma.alert.count({ where: { agencyId, severity: 'WARNING', resolvedAt: null } }),
+      prisma.alert.count({ where: { agencyId, resolvedAt: null } }),
+      prisma.alert.count({ where: { agencyId } }),
+    ]);
+  } catch (error) {
+    if (!isPrismaConnectionError(error)) {
+      throw error;
+    }
+
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Monitoramento"
+          title="Alertas"
+          description="Fila operacional de eventos relevantes para a agencia, com pendencias, contexto de viagem e resolucao direta."
+        />
+        <DatabaseUnavailableNotice context="A fila de alertas nao foi carregada porque a conexao com o banco falhou." />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

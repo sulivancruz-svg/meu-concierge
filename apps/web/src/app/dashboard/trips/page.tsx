@@ -6,9 +6,11 @@ import { Prisma, TripStatus } from '@prisma/client';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { DeleteResourceButton } from '@/components/ui/delete-resource-button';
+import { DatabaseUnavailableNotice } from '@/components/ui/database-unavailable-notice';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionCard } from '@/components/ui/section-card';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { isPrismaConnectionError } from '@/lib/prisma-error';
 import { getTripStatusLabel, getTripStatusTone, isTripActiveForWhatsApp, readTripOperationalMeta, TRIP_STATUS_OPTIONS } from '@/modules/trips/trip-meta';
 
 function parseSearchDate(search: string) {
@@ -66,29 +68,47 @@ export default async function TripsPage({
     ...(orFilters.length ? { OR: orFilters } : {}),
   };
 
-  const trips = await prisma.trip.findMany({
-    where,
-    orderBy: [{ startDate: 'asc' }, { createdAt: 'desc' }],
-    include: {
-      passengers: {
-        include: {
-          passenger: {
-            select: {
-              id: true,
-              name: true,
+  let trips;
+  try {
+    trips = await prisma.trip.findMany({
+      where,
+      orderBy: [{ startDate: 'asc' }, { createdAt: 'desc' }],
+      include: {
+        passengers: {
+          include: {
+            passenger: {
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
         },
-      },
-      _count: {
-        select: {
-          documents: true,
-          conversations: true,
-          alerts: true,
+        _count: {
+          select: {
+            documents: true,
+            conversations: true,
+            alerts: true,
+          },
         },
       },
-    },
-  });
+    });
+  } catch (error) {
+    if (!isPrismaConnectionError(error)) {
+      throw error;
+    }
+
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Operacao"
+          title="Jornadas Globais"
+          description="Visao transversal das jornadas da agencia com status, passageiros vinculados e prioridade operacional."
+        />
+        <DatabaseUnavailableNotice context="As jornadas nao foram carregadas porque a conexao com o banco falhou." />
+      </div>
+    );
+  }
 
   const tripListQuery = new URLSearchParams();
   if (q) tripListQuery.set('q', q);
