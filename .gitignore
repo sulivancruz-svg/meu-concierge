@@ -40,3 +40,4 @@ tunnel.*.log
 .next-dev-debug.log
 
 .vercel
+.env
