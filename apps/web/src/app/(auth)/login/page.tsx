@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, LockKeyhole, MessagesSquare, ShieldCheck, Sparkles } from 'lucide-react';
@@ -126,12 +125,6 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-6 text-sm text-[#5b665d]">
-              Nova agencia no SaaS?{' '}
-              <Link href="/register" className="font-semibold text-[#1f6b46]">
-                Criar ambiente exclusivo
-              </Link>
-            </div>
           </div>
         </section>
       </div>
