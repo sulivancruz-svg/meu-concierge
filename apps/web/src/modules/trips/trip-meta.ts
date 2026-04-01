@@ -13,6 +13,65 @@ export function isTripActiveForWhatsApp(input: {
   return input.isActiveForWhatsapp === true || operational.activeForWhatsApp;
 }
 
+type TripCandidateForWhatsApp = {
+  startDate: Date;
+  endDate?: Date | null;
+  status: TripStatus;
+  isActiveForWhatsapp?: boolean;
+  structuredMetadata?: Prisma.JsonValue | null;
+};
+
+function isTripOngoing(input: TripCandidateForWhatsApp, now: Date) {
+  if (input.status === 'IN_PROGRESS') {
+    return true;
+  }
+
+  const startsBeforeNow = input.startDate.getTime() <= now.getTime();
+  const endsAfterNow = input.endDate ? input.endDate.getTime() >= now.getTime() : true;
+  return startsBeforeNow && endsAfterNow;
+}
+
+function isTripUpcoming(input: TripCandidateForWhatsApp, now: Date) {
+  return input.startDate.getTime() >= now.getTime() || (input.endDate?.getTime() ?? 0) >= now.getTime();
+}
+
+export function selectPreferredTripForWhatsApp<T extends TripCandidateForWhatsApp>(
+  trips: T[],
+  now = new Date(),
+) {
+  if (!trips.length) {
+    return null;
+  }
+
+  const sorted = [...trips].sort((left, right) => {
+    const leftExplicit = isTripActiveForWhatsApp(left);
+    const rightExplicit = isTripActiveForWhatsApp(right);
+    if (leftExplicit !== rightExplicit) {
+      return leftExplicit ? -1 : 1;
+    }
+
+    const leftOngoing = isTripOngoing(left, now);
+    const rightOngoing = isTripOngoing(right, now);
+    if (leftOngoing !== rightOngoing) {
+      return leftOngoing ? -1 : 1;
+    }
+
+    const leftUpcoming = isTripUpcoming(left, now);
+    const rightUpcoming = isTripUpcoming(right, now);
+    if (leftUpcoming !== rightUpcoming) {
+      return leftUpcoming ? -1 : 1;
+    }
+
+    if (leftUpcoming && rightUpcoming) {
+      return left.startDate.getTime() - right.startDate.getTime();
+    }
+
+    return right.startDate.getTime() - left.startDate.getTime();
+  });
+
+  return sorted[0] ?? null;
+}
+
 export const TRIP_STATUS_OPTIONS: Array<{ value: TripStatus; label: string }> = [
   { value: 'DRAFT', label: 'Pre-viagem' },
   { value: 'READY', label: 'Pronta' },

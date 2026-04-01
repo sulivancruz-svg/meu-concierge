@@ -87,7 +87,7 @@ async function ensureAuthUser(
 }
 
 async function main() {
-  console.log('Seeding Concierge do Passageiro...');
+  console.log('Seeding Pede Pro Concierge...');
 
   const supabase = getSupabaseAdmin();
   const today = new Date();

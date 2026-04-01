@@ -35,7 +35,7 @@ export default async function ConversationsPage() {
       prisma.trip.findMany({
         where: {
           agencyId,
-          status: { in: ['READY', 'IN_PROGRESS', 'COMPLETED'] },
+          status: { in: ['DRAFT', 'READY', 'IN_PROGRESS', 'COMPLETED'] },
         },
         orderBy: { startDate: 'asc' },
         select: { id: true, title: true },

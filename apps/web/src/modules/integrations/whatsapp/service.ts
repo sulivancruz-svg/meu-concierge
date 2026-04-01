@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '@/lib/db';
-import { isTripActiveForWhatsApp } from '@/modules/trips/trip-meta';
+import { selectPreferredTripForWhatsApp } from '@/modules/trips/trip-meta';
 
 const PLATFORM_OWNER_AGENCY_SLUG = (process.env.PLATFORM_OWNER_AGENCY_SLUG ?? 'sulivan-cruz').trim().toLowerCase();
 
@@ -193,7 +193,7 @@ export async function resolveActiveTripForPassenger(agencyId: string, passengerI
       passengerId,
       trip: {
         agencyId,
-        status: { in: ['READY', 'IN_PROGRESS', 'COMPLETED'] },
+        status: { in: ['DRAFT', 'READY', 'IN_PROGRESS', 'COMPLETED'] },
       },
     },
     include: {
@@ -213,8 +213,8 @@ export async function resolveActiveTripForPassenger(agencyId: string, passengerI
     ],
   });
 
-  const activeForWhatsApp = memberships.find((membership) => isTripActiveForWhatsApp(membership.trip));
-  return activeForWhatsApp?.tripId ?? null;
+  const preferredTrip = selectPreferredTripForWhatsApp(memberships.map((membership) => membership.trip));
+  return preferredTrip?.id ?? null;
 }
 
 export async function findOrCreateWhatsAppConversation(input: {

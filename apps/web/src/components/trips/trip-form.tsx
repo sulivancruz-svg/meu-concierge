@@ -139,12 +139,18 @@ export function TripForm({
 
     const endpoint = mode === 'create' ? '/api/admin/trips' : `/api/admin/trips/${tripId}`;
     const method = mode === 'create' ? 'POST' : 'PATCH';
+    const passengerIds = defaultPassengerId
+      ? Array.from(new Set([defaultPassengerId, ...form.passengerIds]))
+      : form.passengerIds;
 
     try {
       const response = await fetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          passengerIds,
+        }),
       });
 
       const payload = await response.json().catch(() => null);
@@ -155,7 +161,10 @@ export function TripForm({
 
       const nextTripId = tripId ?? payload.id;
       const marker = mode === 'create' ? 'saved=1' : 'updated=1';
-      router.push(`/dashboard/trips/${nextTripId}?${marker}`);
+      const destination = mode === 'create' && defaultPassengerId
+        ? `/dashboard/passengers/${defaultPassengerId}?${marker}`
+        : `/dashboard/trips/${nextTripId}?${marker}`;
+      router.push(destination);
       router.refresh();
     } catch {
       setError('Erro de comunicacao ao salvar viagem.');

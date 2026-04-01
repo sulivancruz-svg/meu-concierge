@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { normalizeWhatsAppPhone } from '@/modules/integrations/whatsapp/service';
+import { normalizeWhatsAppPhone, resolvePassengerFromWhatsApp } from '@/modules/integrations/whatsapp/service';
 import { listConversations, resolveConversationTripId } from '@/modules/conversations/service';
 
 const CreateConversationSchema = z.object({
@@ -30,7 +30,11 @@ export async function POST(req: NextRequest) {
   try {
     const session = await requireAdmin();
     const body = CreateConversationSchema.parse(await req.json());
-    const passengerId = body.passengerId || null;
+    const normalizedPhone = normalizeWhatsAppPhone(body.phone);
+    const matchedPassenger = body.passengerId
+      ? null
+      : await resolvePassengerFromWhatsApp(session.user.agencyId, normalizedPhone);
+    const passengerId = body.passengerId || matchedPassenger?.id || null;
     const tripId = await resolveConversationTripId({
       agencyId: session.user.agencyId,
       passengerId,
@@ -42,7 +46,7 @@ export async function POST(req: NextRequest) {
         agencyId: session.user.agencyId,
         passengerId,
         tripId,
-        phone: normalizeWhatsAppPhone(body.phone),
+        phone: normalizedPhone,
         contextSummary: body.contextSummary?.trim() || null,
       },
     });

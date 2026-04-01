@@ -7,7 +7,7 @@ export default function NotFound() {
           Esta pagina nao foi encontrada.
         </h1>
         <p className="mt-3 text-sm leading-6 text-[#5b665d]">
-          Verifique a URL ou volte para a entrada principal do Concierge do Passageiro.
+          Verifique a URL ou volte para a entrada principal do Pede Pro Concierge.
         </p>
         <div className="mt-8">
           <a

@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { createSignedDownloadUrl } from '@/lib/storage';
 import { getDocumentCategoryLabel, readDocumentMetadata } from '@/modules/documents/document-meta';
-import { isTripActiveForWhatsApp } from '@/modules/trips/trip-meta';
+import { selectPreferredTripForWhatsApp } from '@/modules/trips/trip-meta';
 import type { ConversationDetail, ConversationListItem } from './types';
 
 async function serializeSuggestions(payload: Prisma.JsonValue | null | undefined) {
@@ -117,7 +117,7 @@ export async function resolveConversationTripId(input: {
       passengerId: input.passengerId,
       trip: {
         agencyId: input.agencyId,
-        status: { in: ['READY', 'IN_PROGRESS', 'COMPLETED'] },
+        status: { in: ['DRAFT', 'READY', 'IN_PROGRESS', 'COMPLETED'] },
       },
     },
     include: {
@@ -126,6 +126,7 @@ export async function resolveConversationTripId(input: {
           id: true,
           status: true,
           startDate: true,
+          endDate: true,
           isActiveForWhatsapp: true,
           structuredMetadata: true,
         },
@@ -140,8 +141,8 @@ export async function resolveConversationTripId(input: {
     return null;
   }
 
-  const activeForWhatsApp = memberships.find((membership) => isTripActiveForWhatsApp(membership.trip));
-  return activeForWhatsApp?.tripId ?? null;
+  const preferredTrip = selectPreferredTripForWhatsApp(memberships.map((membership) => membership.trip));
+  return preferredTrip?.id ?? null;
 }
 
 export async function listConversations(agencyId: string): Promise<ConversationListItem[]> {

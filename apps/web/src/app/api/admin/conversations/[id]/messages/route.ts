@@ -7,6 +7,7 @@ import { generateConciergeMockReply } from '@/lib/ai/concierge';
 import { sendWhatsAppText, type WhatsAppSendResult } from '@/lib/whatsapp/send';
 import { autoSendSuggestedDocumentForConversation } from '@/modules/conversations/document-send';
 import { getConversationDetail, resolveConversationTripId } from '@/modules/conversations/service';
+import { resolvePassengerFromWhatsApp } from '@/modules/integrations/whatsapp/service';
 
 const MessageSchema = z.object({
   body: z.string().min(1),
@@ -36,6 +37,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const now = new Date();
     const createdIds: string[] = [];
     let resolvedTripId: string | null | undefined = conversation.tripId;
+    const matchedPassenger = conversation.passengerId
+      ? null
+      : await resolvePassengerFromWhatsApp(session.user.agencyId, conversation.phone);
+    const resolvedPassengerId = conversation.passengerId ?? matchedPassenger?.id ?? null;
 
     if (body.mode === 'passenger') {
       const inbound = await prisma.message.create({
@@ -54,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
       resolvedTripId = conversation.tripId ?? await resolveConversationTripId({
         agencyId: session.user.agencyId,
-        passengerId: conversation.passengerId,
+        passengerId: resolvedPassengerId,
         tripId: null,
       });
 
@@ -66,7 +71,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         reply = await generateConciergeMockReply({
           message: body.body.trim(),
           tripId: resolvedTripId,
-          passengerId: conversation.passengerId,
+          passengerId: resolvedPassengerId,
         });
 
         assistantText = reply.text;
@@ -105,7 +110,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           conversationId: conversation.id,
           phone: conversation.phone,
           tripId: resolvedTripId,
-          passengerId: conversation.passengerId,
+          passengerId: resolvedPassengerId,
           suggestedDocuments: reply.suggestedDocuments,
           captionPrefix: 'Documento solicitado pelo passageiro',
         });
@@ -141,6 +146,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       where: { id: conversation.id },
       data: {
         status: 'OPEN',
+        passengerId: resolvedPassengerId ?? conversation.passengerId,
         tripId: resolvedTripId ?? conversation.tripId,
         lastMessageAt: now,
       },

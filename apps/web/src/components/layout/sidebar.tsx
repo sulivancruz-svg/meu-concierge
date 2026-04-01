@@ -25,7 +25,7 @@ export default function Sidebar({ isPlatformOwner = false }: SidebarProps) {
             CP
           </div>
           <div>
-            <p className="text-sm font-semibold tracking-[0.14em] text-[#f6f7f2]">Concierge do Passageiro</p>
+            <p className="text-sm font-semibold tracking-[0.14em] text-[#f6f7f2]">Pede Pro Concierge</p>
             <p className="mt-1 text-xs text-white/60">Operacao da agencia, passageiro e IA</p>
           </div>
         </div>

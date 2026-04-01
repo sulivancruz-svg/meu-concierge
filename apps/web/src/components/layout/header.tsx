@@ -27,7 +27,7 @@ export default function Header({ user }: Props) {
           </div>
           <div>
             <p className="text-lg font-semibold tracking-[-0.04em] text-[#142018]">
-              {currentItem?.label ?? 'Concierge do Passageiro'}
+              {currentItem?.label ?? 'Pede Pro Concierge'}
             </p>
             <p className="text-sm text-[#5b665d]">
               {currentItem?.description ?? 'Base modular da operacao da agencia e da experiencia do passageiro.'}

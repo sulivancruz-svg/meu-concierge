@@ -74,7 +74,7 @@ export default async function SettingsPage() {
         title="Configuracoes"
         description={
           isPlatformContext
-            ? 'Camada de plataforma do Concierge do Passageiro com Postgres no Supabase, auth administrativo, storage isolado e trilha pronta para portal do passageiro.'
+            ? 'Camada de plataforma do Pede Pro Concierge com Postgres no Supabase, auth administrativo, storage isolado e trilha pronta para portal do passageiro.'
             : 'Gerencie os dados da sua agencia, equipe e preferencias da conta.'
         }
       />

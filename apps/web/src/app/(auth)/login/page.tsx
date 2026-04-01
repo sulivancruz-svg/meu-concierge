@@ -45,7 +45,7 @@ export default function LoginPage() {
               </div>
               <div className="max-w-xl space-y-4">
                 <h1 className="text-4xl font-semibold tracking-[-0.05em] text-white lg:text-5xl">
-                  Concierge do Passageiro
+                  Pede Pro Concierge
                 </h1>
                 <p className="text-base leading-7 text-white/74">
                   Plataforma para agencia de viagens operar passageiros, jornadas, documentos, alertas e atendimento inteligente em um unico ambiente.
