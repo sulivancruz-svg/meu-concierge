@@ -17,10 +17,16 @@ model Agency {
   supportPhone    String?
   supportEmail    String?
   supportWhatsApp String?
-  plan            AgencyPlan   @default(STARTER)
-  status          AgencyStatus @default(ACTIVE)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  plan                AgencyPlan   @default(STARTER)
+  status              AgencyStatus @default(ACTIVE)
+  mondeLogin          String?
+  mondePasswordEnc    String?
+  mondeEnabled        Boolean      @default(false)
+  mondeLastSyncAt     DateTime?
+  mondeLastSyncStatus String?
+  mondeLastSyncMeta   Json?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
   users               AgencyUser[]
   passengers          Passenger[]
@@ -31,6 +37,7 @@ model Agency {
   conversations       Conversation[]
   auditLogs           AuditLog[]
   alerts              Alert[]
+  mondeSyncLogs       MondeSyncLog[]
 
   @@map("agencies")
 }
@@ -90,6 +97,7 @@ model Passenger {
   passportNumber     String?
   dateOfBirth        DateTime?
   nationality        String?
+  mondeExternalId    String?
   portalStatus       PassengerPortalStatus @default(PENDING)
   portalInvitedAt    DateTime?
   portalActivatedAt  DateTime?
@@ -109,6 +117,7 @@ model Passenger {
   @@index([agencyId])
   @@index([agencyId, phone])
   @@index([agencyId, email])
+  @@index([agencyId, mondeExternalId])
   @@index([authUserId])
   @@map("passengers")
 }
@@ -554,6 +563,24 @@ model AuditLog {
   @@index([agencyId, createdAt])
   @@index([entityType, entityId])
   @@map("audit_logs")
+}
+
+model MondeSyncLog {
+  id         String   @id @default(cuid())
+  agencyId   String
+  trigger    String
+  status     String
+  imported   Int      @default(0)
+  updated    Int      @default(0)
+  skipped    Int      @default(0)
+  errors     Json?
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id])
+
+  @@index([agencyId, createdAt])
+  @@map("monde_sync_logs")
 }
 
 enum TripItemType {
