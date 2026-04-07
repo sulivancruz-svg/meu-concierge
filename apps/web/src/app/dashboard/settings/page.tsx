@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { getSupabaseSetupStatus } from '@/lib/supabase/config';
 import { AgencyAccountForm } from '@/components/settings/agency-account-form';
 import { AgencyTeamManager } from '@/components/settings/agency-team-manager';
+import { MondeIntegrationCard } from '@/components/settings/monde-integration-card';
 import { PlatformAgenciesManager } from '@/components/settings/platform-agencies-manager';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionCard } from '@/components/ui/section-card';
@@ -57,6 +58,12 @@ export default async function SettingsPage() {
         },
       })
     : [];
+
+  const mondeSyncLogs = await prisma.mondeSyncLog.findMany({
+    where: { agencyId: session.user.agencyId },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+  });
 
   const supabase = getSupabaseSetupStatus();
   const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
@@ -156,6 +163,25 @@ export default async function SettingsPage() {
         }))}
         currentUserId={session.user.id}
         currentUserRole={session.user.role as 'OWNER' | 'ADMIN' | 'AGENT'}
+      />
+
+      <MondeIntegrationCard
+        initialData={{
+          enabled: agency?.mondeEnabled ?? false,
+          login: agency?.mondeLogin ?? null,
+          lastSyncAt: agency?.mondeLastSyncAt?.toISOString() ?? null,
+          lastSyncStatus: agency?.mondeLastSyncStatus ?? null,
+          lastSyncMeta: (agency?.mondeLastSyncMeta as Record<string, unknown>) ?? null,
+          recentLogs: mondeSyncLogs.map((log) => ({
+            id: log.id,
+            status: log.status,
+            imported: log.imported,
+            updated: log.updated,
+            skipped: log.skipped,
+            durationMs: log.durationMs,
+            createdAt: log.createdAt.toISOString(),
+          })),
+        }}
       />
 
       {isPlatformContext && (
