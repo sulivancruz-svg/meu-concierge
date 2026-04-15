@@ -21,7 +21,7 @@ Você está enviando informações para um **Google Docs remoto** que é compart
 
 ### URL do Webhook Google Apps Script
 ```
-https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec
+https://script.google.com/macros/s/AKfycbxhwWewXXwPw9V06Cs-nWeqfAytVKqsi7POAIQ8VgqHsjRRDW4CXCnVqSAR9ZiXloRl/exec
 ```
 **ESTA URL NÃO MUDA. USE SEMPRE ESSA.**
 
@@ -39,7 +39,7 @@ meu-concierge-brainstorm-2026
 ### Variáveis de Ambiente Locais
 Se existir um arquivo `.env.local` na raiz do projeto, ele conterá:
 ```env
-GOOGLE_DOCS_WEBHOOK=https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec
+GOOGLE_DOCS_WEBHOOK=https://script.google.com/macros/s/AKfycbxhwWewXXwPw9V06Cs-nWeqfAytVKqsi7POAIQ8VgqHsjRRDW4CXCnVqSAR9ZiXloRl/exec
 GOOGLE_DOCS_TOKEN=meu-concierge-brainstorm-2026
 ```
 
@@ -50,7 +50,7 @@ GOOGLE_DOCS_TOKEN=meu-concierge-brainstorm-2026
 ### Método 1: cURL via Bash (RECOMENDADO)
 
 ```bash
-curl -X POST "https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec" \
+curl -X POST "https://script.google.com/macros/s/AKfycbxhwWewXXwPw9V06Cs-nWeqfAytVKqsi7POAIQ8VgqHsjRRDW4CXCnVqSAR9ZiXloRl/exec" \
   -d "section=Ideias&content=Sua+ideia+aqui&token=meu-concierge-brainstorm-2026&author=Claude"
 ```
 
@@ -104,7 +104,7 @@ Próximos passos: Entender requisitos de permissão e fonte de dados
 
 ANTES de fazer o POST, verifique:
 
-- [ ] A URL do webhook está exata: `https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec`
+- [ ] A URL do webhook está exata: `https://script.google.com/macros/s/AKfycbxhwWewXXwPw9V06Cs-nWeqfAytVKqsi7POAIQ8VgqHsjRRDW4CXCnVqSAR9ZiXloRl/exec`
 - [ ] O token é exato: `meu-concierge-brainstorm-2026`
 - [ ] O `section` (seção) faz sentido (Ideias, Bugs, Implementações, etc)
 - [ ] O `content` tem informação útil e estruturada
@@ -154,7 +154,7 @@ Próximos passos: Revisar requisitos de escopo"
 # (curl automaticamente converte quando usa -d)
 
 # 3. Executar o curl
-curl -X POST "https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec" \
+curl -X POST "https://script.google.com/macros/s/AKfycbxhwWewXXwPw9V06Cs-nWeqfAytVKqsi7POAIQ8VgqHsjRRDW4CXCnVqSAR9ZiXloRl/exec" \
   -d "section=Ideias&content=${IDEIA}&token=meu-concierge-brainstorm-2026&author=Claude"
 
 # 4. Você receberá resposta
@@ -187,10 +187,10 @@ Se o curl retorna erro, tente:
 
 ```bash
 # 1. Testar se a URL está acessível
-curl -I "https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec"
+curl -I "https://script.google.com/macros/s/AKfycbxhwWewXXwPw9V06Cs-nWeqfAytVKqsi7POAIQ8VgqHsjRRDW4CXCnVqSAR9ZiXloRl/exec"
 
 # 2. Fazer POST vazio com verbose para debug
-curl -v "https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec" \
+curl -v "https://script.google.com/macros/s/AKfycbxhwWewXXwPw9V06Cs-nWeqfAytVKqsi7POAIQ8VgqHsjRRDW4CXCnVqSAR9ZiXloRl/exec" \
   -d "token=meu-concierge-brainstorm-2026"
 
 # 3. Verificar se Google Apps Script está online
@@ -214,7 +214,7 @@ curl -v "https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC
 Se você só quer o comando para copiar/colar:
 
 ```bash
-curl -X POST "https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec" \
+curl -X POST "https://script.google.com/macros/s/AKfycbxhwWewXXwPw9V06Cs-nWeqfAytVKqsi7POAIQ8VgqHsjRRDW4CXCnVqSAR9ZiXloRl/exec" \
   -d "section=Ideias&content=DESCREVA_SUA_IDEIA_AQUI&token=meu-concierge-brainstorm-2026&author=Claude"
 ```
 

@@ -27,7 +27,7 @@ https://docs.google.com/document/d/1_AE1N6MVghahkNKFkePbjbpGAKE7oIkr65h_HEa6o8E/
 Na raiz do projeto (`meu-concierge/`), crie um arquivo `.env.local`:
 
 ```env
-GOOGLE_DOCS_WEBHOOK=https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec
+GOOGLE_DOCS_WEBHOOK=https://script.google.com/macros/s/AKfycbxhwWewXXwPw9V06Cs-nWeqfAytVKqsi7POAIQ8VgqHsjRRDW4CXCnVqSAR9ZiXloRl/exec
 GOOGLE_DOCS_TOKEN=meu-concierge-brainstorm-2026
 ```
 
@@ -61,7 +61,7 @@ $body = @{
     author = "Claude Windows"
 } | ConvertTo-Json
 
-$webhook = "https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec"
+$webhook = "https://script.google.com/macros/s/AKfycbxhwWewXXwPw9V06Cs-nWeqfAytVKqsi7POAIQ8VgqHsjRRDW4CXCnVqSAR9ZiXloRl/exec"
 
 Invoke-WebRequest -Uri $webhook -Method POST -Body $body -ContentType "application/json"
 ```
