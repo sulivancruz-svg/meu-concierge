@@ -1,23 +1,12 @@
 // ID do documento que será atualizado
 const DOC_ID = '1_AE1N6MVghahkNKFkePbjbpGAKE7oIkr65h_HEa6o8E';
+const VALID_TOKEN = 'meu-concierge-brainstorm-2026';
 
-/**
- * Adiciona conteúdo ao documento Google Docs
- * @param {string} section - Seção do documento (ex: "Ideias", "Implementações")
- * @param {string} content - Conteúdo a adicionar
- * @param {string} token - Token de segurança
- */
 function doPost(e) {
   try {
-    // Verificar token de segurança
-    const validToken = 'meu-concierge-brainstorm-2026';
-    const providedToken = e.parameter.token;
-
-    if (providedToken !== validToken) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Token inválido'
-      })).setMimeType(ContentService.MimeType.JSON);
+    // Validar token
+    if (e.parameter.token !== VALID_TOKEN) {
+      return jsonResponse(false, 'Token inválido');
     }
 
     const section = e.parameter.section || 'Ideias Gerais';
@@ -25,58 +14,35 @@ function doPost(e) {
     const author = e.parameter.author || 'Claude';
 
     if (!content) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Conteúdo não fornecido'
-      })).setMimeType(ContentService.MimeType.JSON);
+      return jsonResponse(false, 'Conteúdo não fornecido');
     }
 
     // Abrir documento
     const doc = DocumentApp.openById(DOC_ID);
     const body = doc.getBody();
 
-    // Procurar ou criar seção
-    let sectionFound = false;
-    const paragraphs = body.getParagraphs();
-    let insertIndex = 0;
-
-    for (let i = 0; i < paragraphs.length; i++) {
-      const text = paragraphs[i].getText();
-      if (text.includes(section)) {
-        sectionFound = true;
-        insertIndex = i + 1;
-        break;
-      }
-    }
-
-    // Se seção não existe, criar nova
-    if (!sectionFound) {
-      body.appendParagraph('\n');
-      body.appendParagraph(section).setHeading(DocumentApp.ParagraphHeading.HEADING2);
-      insertIndex = body.getParagraphs().length - 1;
-    }
-
-    // Adicionar timestamp
+    // Timestamp
     const timestamp = new Date().toLocaleString('pt-BR');
     const fullContent = `[${author} - ${timestamp}]\n${content}`;
 
-    // Inserir conteúdo
-    const element = body.insertParagraph(insertIndex, fullContent);
+    // Adicionar conteúdo no final
+    body.appendParagraph(fullContent);
 
-    // Salvar documento
+    // Salvar
     doc.saveAndClose();
 
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      message: `Conteúdo adicionado à seção "${section}"`
-    })).setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse(true, `Conteúdo adicionado à seção "${section}"`);
 
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse(false, error.toString());
   }
+}
+
+function jsonResponse(success, message) {
+  return ContentService.createTextOutput(JSON.stringify({
+    success: success,
+    message: message
+  })).setMimeType(ContentService.MimeType.JSON);
 }
 
 /**

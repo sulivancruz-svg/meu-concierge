@@ -28,7 +28,7 @@ Integrar o Google Docs do brainstorm com Claude, permitindo que ideias sejam aut
 Crie um arquivo `.env.local` na raiz do projeto:
 
 ```env
-GOOGLE_DOCS_WEBHOOK=https://script.google.com/macros/d/[sua-url]/usercontent
+GOOGLE_DOCS_WEBHOOK=https://script.google.com/macros/s/AKfycbyEekvL0bKarL_Q8E9usDThUT38frjC5Z7C-A_1eY2XnJH9Q1CHdXpwUgFbhtRQkhKQ/exec
 GOOGLE_DOCS_TOKEN=meu-concierge-brainstorm-2026
 ```
 
