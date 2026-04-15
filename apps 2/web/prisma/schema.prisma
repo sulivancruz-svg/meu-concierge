@@ -1,0 +1,692 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Agency {
+  id              String       @id @default(cuid())
+  slug            String       @unique
+  name            String
+  logoUrl         String?
+  primaryColor    String?      @default("#1d4ed8")
+  supportPhone    String?
+  supportEmail    String?
+  supportWhatsApp String?
+  plan            AgencyPlan   @default(STARTER)
+  status          AgencyStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  users               AgencyUser[]
+  passengers          Passenger[]
+  passengerCompanions PassengerCompanion[]
+  trips               Trip[]
+  documents           Document[]
+  tripItems           TripItem[]
+  conversations       Conversation[]
+  auditLogs           AuditLog[]
+  alerts              Alert[]
+
+  @@map("agencies")
+}
+
+model AgencyUser {
+  id            String         @id @default(cuid())
+  authUserId    String?        @unique @db.Uuid
+  agencyId      String
+  role          AgencyUserRole @default(AGENT)
+  name          String
+  email         String
+  emailVerified DateTime?
+  phone         String?
+  avatarUrl     String?
+  passwordHash  String?
+  status        UserStatus     @default(ACTIVE)
+  lastLoginAt   DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  agency      Agency         @relation(fields: [agencyId], references: [id])
+  magicTokens MagicToken[]
+  auditLogs   AuditLog[]
+  documents   Document[]     @relation("UploadedBy")
+  notes       InternalNote[]
+  trips       Trip[]         @relation("CreatedBy")
+
+  @@unique([agencyId, email])
+  @@index([agencyId])
+  @@index([email])
+  @@index([authUserId])
+  @@map("agency_users")
+}
+
+model MagicToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  used      Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user AgencyUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("magic_tokens")
+}
+
+model Passenger {
+  id                 String                @id @default(cuid())
+  authUserId         String?               @unique @db.Uuid
+  agencyId           String
+  name               String
+  email              String?
+  phone              String?
+  passportNumber     String?
+  dateOfBirth        DateTime?
+  nationality        String?
+  portalStatus       PassengerPortalStatus @default(PENDING)
+  portalInvitedAt    DateTime?
+  portalActivatedAt  DateTime?
+  lastPortalAccessAt DateTime?
+  notes              String?
+  deletedAt          DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  agency         Agency                @relation(fields: [agencyId], references: [id])
+  companions     PassengerCompanion[]
+  tripPassengers TripPassenger[]
+  documents      Document[]
+  tripItems      TripItem[]
+  conversations  Conversation[]
+
+  @@index([agencyId])
+  @@index([agencyId, phone])
+  @@index([agencyId, email])
+  @@index([authUserId])
+  @@map("passengers")
+}
+
+model PassengerCompanion {
+  id                 String   @id @default(cuid())
+  agencyId           String
+  passengerId        String
+  name               String
+  relationship       String?
+  email              String?
+  phone              String?
+  passportNumber     String?
+  dateOfBirth        DateTime?
+  structuredMetadata Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  agency         Agency         @relation(fields: [agencyId], references: [id])
+  passenger      Passenger      @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+  tripPassengers TripPassenger[]
+
+  @@index([agencyId])
+  @@index([passengerId])
+  @@map("passenger_companions")
+}
+
+model Trip {
+  id                 String     @id @default(cuid())
+  agencyId           String
+  createdById        String
+  title              String
+  destination        String?
+  startDate          DateTime
+  endDate            DateTime
+  status             TripStatus @default(DRAFT)
+  isActiveForWhatsapp Boolean   @default(false)
+  internalNotes      String?
+  structuredMetadata Json?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  agency            Agency             @relation(fields: [agencyId], references: [id])
+  createdBy         AgencyUser         @relation("CreatedBy", fields: [createdById], references: [id])
+  passengers        TripPassenger[]
+  flightSegments    FlightSegment[]
+  hotelBookings     HotelBooking[]
+  transportBookings TransportBooking[]
+  tourBookings      TourBooking[]
+  trainBookings     TrainBooking[]
+  insurancePolicies InsurancePolicy[]
+  documents         Document[]
+  tripItems         TripItem[]
+  conversations     Conversation[]
+  notes             InternalNote[]
+  alerts            Alert[]
+
+  @@index([agencyId])
+  @@index([agencyId, startDate])
+  @@index([agencyId, status])
+  @@map("trips")
+}
+
+model TripPassenger {
+  id             String             @id @default(cuid())
+  tripId         String
+  passengerId    String?
+  companionId    String?
+  name           String
+  email          String?
+  phone          String?
+  passportNumber String?
+  isLead         Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  trip      Trip                @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  passenger Passenger?          @relation(fields: [passengerId], references: [id])
+  companion PassengerCompanion? @relation(fields: [companionId], references: [id])
+
+  @@index([tripId])
+  @@index([passengerId])
+  @@index([companionId])
+  @@map("trip_passengers")
+}
+
+model FlightSegment {
+  id                 String       @id @default(cuid())
+  tripId             String
+  airline            String
+  airlineName        String?
+  flightNumber       String
+  origin             String
+  destination        String
+  departureAt        DateTime
+  arrivalAt          DateTime
+  pnr                String?
+  cabinClass         String?
+  baggageInfo        String?
+  statusCode         FlightStatus @default(SCHEDULED)
+  actualDepartureAt  DateTime?
+  actualArrivalAt    DateTime?
+  departureTerminal  String?
+  departureGate      String?
+  arrivalTerminal    String?
+  arrivalGate        String?
+  lastCheckedAt      DateTime?
+  structuredMetadata Json?
+  sortOrder          Int          @default(0)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  trip          Trip                  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  alerts        Alert[]
+  statusHistory FlightStatusHistory[]
+
+  @@index([tripId])
+  @@index([flightNumber, departureAt])
+  @@index([statusCode])
+  @@map("flights")
+}
+
+model FlightStatusHistory {
+  id         String       @id @default(cuid())
+  flightId   String
+  statusCode FlightStatus
+  provider   String?
+  summary    String?
+  payload    Json?
+  observedAt DateTime     @default(now())
+
+  flight FlightSegment @relation(fields: [flightId], references: [id], onDelete: Cascade)
+
+  @@index([flightId, observedAt])
+  @@map("flight_status_history")
+}
+
+model HotelBooking {
+  id                 String   @id @default(cuid())
+  tripId             String
+  hotelName          String
+  address            String?
+  phone              String?
+  website            String?
+  checkIn            DateTime
+  checkOut           DateTime
+  roomType           String?
+  confirmationCode   String?
+  boardType          String?
+  nights             Int?
+  notes              String?
+  structuredMetadata Json?
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("hotels")
+}
+
+model TransportBooking {
+  id                 String        @id @default(cuid())
+  tripId             String
+  type               TransportType @default(TRANSFER)
+  name               String
+  scheduledAt        DateTime
+  pickupPoint        String?
+  dropoffPoint       String?
+  provider           String?
+  confirmationCode   String?
+  vehicleType        String?
+  driverPhone        String?
+  rentalReturnAt     DateTime?
+  notes              String?
+  structuredMetadata Json?
+  sortOrder          Int           @default(0)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("transports")
+}
+
+model TourBooking {
+  id                 String   @id @default(cuid())
+  tripId             String
+  name               String
+  scheduledAt        DateTime
+  durationMinutes    Int?
+  meetingPoint       String?
+  provider           String?
+  confirmationCode   String?
+  isEssential        Boolean  @default(false)
+  notes              String?
+  structuredMetadata Json?
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("tours")
+}
+
+model TrainBooking {
+  id                 String   @id @default(cuid())
+  tripId             String
+  operator           String
+  trainNumber        String?
+  origin             String
+  destination        String
+  departureAt        DateTime
+  arrivalAt          DateTime
+  seatClass          String?
+  confirmationCode   String?
+  notes              String?
+  structuredMetadata Json?
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("trains")
+}
+
+model InsurancePolicy {
+  id                 String   @id @default(cuid())
+  tripId             String
+  provider           String
+  policyNumber       String?
+  coverageType       String?
+  startDate          DateTime
+  endDate            DateTime
+  emergencyPhone     String?
+  assistanceUrl      String?
+  notes              String?
+  structuredMetadata Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("insurances")
+}
+
+model Document {
+  id                 String                   @id @default(cuid())
+  agencyId           String
+  tripId             String?
+  passengerId        String?
+  tripItemId         String?
+  uploadedById       String
+  name               String
+  description        String?
+  category           DocumentCategory
+  tags               String[]                 @default([])
+  isEssential        Boolean                  @default(false)
+  storagePath        String                   @unique
+  storageBucket      String
+  mimeType           String
+  fileSizeBytes      Int
+  checksum           String?
+  extractedText      String?                  @db.Text
+  structuredMetadata Json?
+  processingStatus   DocumentProcessingStatus @default(PENDING)
+  processedAt        DateTime?
+  processingError    String?
+  deletedAt          DateTime?
+  sortOrder          Int                      @default(0)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  agency     Agency       @relation(fields: [agencyId], references: [id])
+  trip       Trip?        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  passenger  Passenger?   @relation(fields: [passengerId], references: [id])
+  tripItem   TripItem?    @relation(fields: [tripItemId], references: [id])
+  uploadedBy AgencyUser   @relation("UploadedBy", fields: [uploadedById], references: [id])
+  chunks     DocumentChunk[]
+
+  @@index([agencyId, tripId])
+  @@index([tripId])
+  @@index([passengerId])
+  @@index([tripItemId])
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id            String   @id @default(cuid())
+  documentId    String
+  tripId        String
+  agencyId      String
+  chunkIndex    Int
+  content       String   @db.Text
+  embeddingJson Json?
+  createdAt     DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([tripId])
+  @@map("document_chunks")
+}
+
+model Conversation {
+  id             String             @id @default(cuid())
+  agencyId       String
+  tripId         String?
+  passengerId    String?
+  phone          String
+  status         ConversationStatus @default(OPEN)
+  contextSummary String?
+  lastMessageAt  DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  agency    Agency     @relation(fields: [agencyId], references: [id])
+  trip      Trip?      @relation(fields: [tripId], references: [id])
+  passenger Passenger? @relation(fields: [passengerId], references: [id])
+  messages  Message[]
+
+  @@index([agencyId, phone])
+  @@index([tripId])
+  @@index([passengerId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  channel        MessageChannel   @default(WHATSAPP)
+  body           String           @db.Text
+  mediaUrl       String?
+  payload        Json?
+  waMessageId    String?          @unique
+  waStatus       WhatsAppStatus   @default(QUEUED)
+  waErrorCode    String?
+  waErrorMsg     String?
+  direction      MessageDirection
+  tokensUsed     Int?
+  aiModel        String?
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  failedAt       DateTime?
+  createdAt      DateTime         @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([waMessageId])
+  @@map("messages")
+}
+
+model InternalNote {
+  id        String   @id @default(cuid())
+  tripId    String
+  authorId  String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trip   Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  author AgencyUser @relation(fields: [authorId], references: [id])
+
+  @@index([tripId])
+  @@map("internal_notes")
+}
+
+model TripItem {
+  id               String       @id @default(cuid())
+  agencyId         String
+  tripId           String
+  passengerId      String?
+  type             TripItemType
+  title            String
+  providerName     String?
+  startAt          DateTime?
+  endAt            DateTime?
+  location         String?
+  confirmationCode String?
+  description      String?
+  details          Json?
+  sortOrder        Int          @default(0)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  agency    Agency     @relation(fields: [agencyId], references: [id])
+  trip      Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  passenger Passenger? @relation(fields: [passengerId], references: [id])
+  documents Document[]
+
+  @@index([tripId])
+  @@index([agencyId])
+  @@map("trip_items")
+}
+
+model Alert {
+  id              String        @id @default(cuid())
+  agencyId        String
+  tripId          String?
+  flightSegmentId String?
+  type            AlertType
+  severity        AlertSeverity @default(INFO)
+  title           String
+  body            String
+  data            Json?
+  resolvedAt      DateTime?
+  notifiedAt      DateTime?
+  createdAt       DateTime      @default(now())
+
+  agency        Agency         @relation(fields: [agencyId], references: [id])
+  trip          Trip?          @relation(fields: [tripId], references: [id])
+  flightSegment FlightSegment? @relation(fields: [flightSegmentId], references: [id])
+
+  @@index([agencyId, createdAt])
+  @@index([tripId])
+  @@map("alerts")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  agencyId   String
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  meta       Json?
+  ipAnon     String?
+  createdAt  DateTime @default(now())
+
+  agency Agency      @relation(fields: [agencyId], references: [id])
+  user   AgencyUser? @relation(fields: [userId], references: [id])
+
+  @@index([agencyId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+enum TripItemType {
+  FLIGHT
+  HOTEL
+  TRANSPORT
+  TOUR
+  TRAIN
+  INSURANCE
+  NOTE
+}
+
+enum AgencyPlan {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum AgencyStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum AgencyUserRole {
+  OWNER
+  ADMIN
+  AGENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
+enum PassengerPortalStatus {
+  PENDING
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+enum TripStatus {
+  DRAFT
+  READY
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum FlightStatus {
+  SCHEDULED
+  ON_TIME
+  DELAYED
+  DEPARTED
+  LANDED
+  CANCELLED
+  DIVERTED
+  UNKNOWN
+}
+
+enum TransportType {
+  TRANSFER
+  CAR_RENTAL
+  FERRY
+  BUS
+  OTHER
+}
+
+enum DocumentCategory {
+  FLIGHT
+  HOTEL
+  INSURANCE
+  TRANSFER
+  TOUR
+  TRAIN
+  VISA
+  PASSPORT
+  VOUCHER
+  OTHER
+}
+
+enum DocumentProcessingStatus {
+  PENDING
+  PROCESSING
+  DONE
+  ERROR
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum MessageChannel {
+  WHATSAPP
+  EMAIL
+  INTERNAL
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum WhatsAppStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  DELETED
+}
+
+enum AlertType {
+  FLIGHT_DELAY
+  FLIGHT_CANCELLATION
+  FLIGHT_GATE_CHANGE
+  DOCUMENT_EXPIRING
+  DOCUMENT_ADDED
+  SYSTEM
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}

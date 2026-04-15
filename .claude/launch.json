@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js (web)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "apps/web",
+      "port": 3000
+    },
+    {
+      "name": "BullMQ Worker",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "worker"],
+      "cwd": "apps/web",
+      "port": null
+    },
+    {
+      "name": "Dev Tunnel (localtunnel)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:tunnel"],
+      "cwd": "apps/web",
+      "port": null
+    }
+  ]
+}
