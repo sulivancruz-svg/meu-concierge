@@ -62,7 +62,6 @@ function doPost(e) {
 
     // Inserir conteúdo
     const element = body.insertParagraph(insertIndex, fullContent);
-    element.setSpacing(DocumentApp.SpacingAttribute.LINE_SPACING, 1.15);
 
     // Salvar documento
     doc.saveAndClose();
